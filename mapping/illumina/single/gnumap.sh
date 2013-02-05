@@ -12,6 +12,6 @@ additional=$8
 
 echo "mapping started" 
 date
-gnumap-plain $additional -g $ref -c $threads -m $hashsz -o $out/$reads_base.sam $reads && \
+gnumap-plain $additional -g $ref -c $threads -m $hashsz -o $out/$reads_base $reads && \
 echo "mapping started" && \
 date

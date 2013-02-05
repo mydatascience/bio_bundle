@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import shutil
+import subprocess
 
 os.environ['MOSAIK_ANN'] = "/home/kate"
 os.environ['STAMPY'] = "/home/kate/bioinf/soft/stampy-1.0.21/stampy.py"
@@ -32,22 +33,28 @@ def check_space(directory, storage):
                         
 
 def test_bam(bam, ref, out_dir, is_paired):
-    os.system("picard-tools CollectAlignmentSummaryMetrics I=\"" + bam 
+    log = open(out_dir + "/metrics_log", "a")
+    subprocess.call("picard-tools CollectAlignmentSummaryMetrics I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_summ\"" 
-            + "R=\"" + ref + "\"")
-    os.system("picard-tools CollectMultipleMetrics I=\"" + bam 
+            + "R=\"" + ref + "\"",
+            stdout=log, stderr=log, shell=True)
+    subprocess.call("picard-tools CollectMultipleMetrics I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_mult\"" 
-            + "R=\"" + ref + "\"")
-    os.system("picard-tools CalculateHsMetrics I=\"" + bam 
+            + "R=\"" + ref + "\"",
+            stdout=log, stderr=log, shell=True)
+    subprocess.call("picard-tools CalculateHsMetrics I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_hs\"" 
-            + "R=\"" + ref + "\"")
-    os.system("picard-tools CollectGcBiasMetrics I=\"" + bam 
+            + "R=\"" + ref + "\"",
+            stdout=log, stderr=log, shell=True)
+    subprocess.call("picard-tools CollectGcBiasMetrics I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_gc\"" 
-            + "R=\"" + ref + "\"")
+            + "R=\"" + ref + "\"",
+            stdout=log, stderr=log, shell=True)
     if (is_paired):
-        os.system("picard-tools CollectInsertSizeMetrics I=\"" + bam 
+        subprocess.call("picard-tools CollectInsertSizeMetrics I=\"" + bam 
                 + "\" O=\"" + out_dir + "/metrics_ins\"" 
-                + "R=\"" + ref + "\" H=\"" + out_dir + "/metrics_hist")
+                + "R=\"" + ref + "\" H=\"" + out_dir + "/metrics_hist",
+                stdout=log, stderr=log, shell=True)
 
 def make_bam(directory, ref):
     files = os.listdir(directory)
@@ -64,17 +71,22 @@ def make_bam(directory, ref):
             aln = f
     if (aln == ""):
         return -1
+
+    log = open(out_dir + "/mapping.log", "a")
+
     if (aln[-4:] == ".sam"):
-        os.system("samtools view -bt \"" + ref 
+        subprocess.call("samtools view -bt \"" + ref 
                 + "\" \"" + directory + "/" + aln + "\" "
-                + " > \"" + directory + "/" + aln[0:-3] + "bam\"" 
-                + " &>> \"" + directory + "/mapping.log\"")
+                + " > \"" + directory + "/" + aln[0:-3] + "bam\"" ,
+                stderr=log, stdout=log, shell=True)
         aln = aln[0:-3] + "bam"
-    os.system("samtools sort \"" + directory + "/" + aln 
-            + "\" \"" + directory + "/" + aln[0:-3] + "sorted\" "
-            + " &>> \"" + directory + "/mapping.log\"")
-    os.system("samtools index \"" + directory + "/" + aln[0:-3] + "sorted.bam\" "
-            + " &>> \"" + directory + "/mapping.log\"")
+    rs = subprocess.call("samtools sort \"" + directory + "/" + aln 
+            + "\" \"" + directory + "/" + aln[0:-3] + "sorted\"",
+            stderr=log, stdout=log, shell=True)
+    print rs
+    rs = subprocess.call("samtools index \"" + directory + "/" + aln[0:-3] + "sorted.bam\"",
+            stderr=log, stdout=log, shell=True)
+    print rs
     return 0
 
 def mapping_paired(mapper, reads1, reads2, ref, out_dir, threads, hashsz, additional):
@@ -82,12 +94,13 @@ def mapping_paired(mapper, reads1, reads2, ref, out_dir, threads, hashsz, additi
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
 
-    os.system(mapper 
+    log = open(out_dir + "/mapping.log", "a")
+    subprocess.call(mapper 
             + " \"" + ref + "\" " + base_name_pattern.search(ref).group(1) 
             + " \"" + reads1 + "\" " + base_name_pattern.search(reads1).group(1) 
             + " \"" + reads2 + "\" " + base_name_pattern.search(reads2).group(1) 
-            + " \"" + out_dir + "\" " + str(threads) + " " + str(hashsz) + " " + additional
-            + " &>> \"" + out_dir + "/mapping.log\"")
+            + " \"" + out_dir + "\" " + str(threads) + " " + str(hashsz) + " " + additional,
+            stderr=log, stdout=log, shell=True)
 
 
 def mapping_single(mapper, reads, ref, out_dir, threads, hashsz, additional):
@@ -95,22 +108,24 @@ def mapping_single(mapper, reads, ref, out_dir, threads, hashsz, additional):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
 
-    os.system(mapper 
+    log = open(out_dir + "/mapping.log", "a")
+    subprocess.call(mapper 
             + " \"" + ref + "\" " + base_name_pattern.search(ref).group(1) 
             + " \"" + reads + "\" " + base_name_pattern.search(reads).group(1) 
-            + " \"" + out_dir + "\" " + str(threads) + " " + str(hashsz) + " " + additional
-            + " &>> \"" + out_dir + "/mapping.log\"")
+            + " \"" + out_dir + "\" " + str(threads) + " " + str(hashsz) + " " + additional,
+            stderr=log, stdout=log, shell=True)
     
 def snp_calling(caller, bam, ref, out_dir, additional):
     if (os.path.exists(out_dir)):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
 
-    os.system(caller 
+    log = open(out_dir + "/snp.log", "a")
+    subprocess.call(caller 
             + " \"" + ref + "\""
             + " \"" + bam + "\" " + base_name_pattern.search(bam).group(1) 
-            + " \"" + out_dir + "\" " + additional
-            + " &>> \"" + out_dir + "/snp.log\"") 
+            + " \"" + out_dir + "\" " + additional,
+            stderr=log, stdout=log, shell=True)
 
 def get_mappers(technology, is_paired, mappers):
     directory = dirname + "/mapping/" + technology + "/" + ("paired" if is_paired else "single") + "/"
@@ -206,6 +221,10 @@ else:
         log.write("making indexed sorted bam file done: " + str(datetime.now()))
         log.close()
         bam = out_dir + "/" + base_name_pattern.search(reads1).group(1) + ".sorted.bam"
+        print bam
+
+        subprocess.call("ls " + out_dir, shell=True)
+        print str(os.path.exists(bam))
 
         if (os.path.exists(bam)):
             if (not args.skip_test):
