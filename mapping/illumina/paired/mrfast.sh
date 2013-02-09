@@ -14,9 +14,9 @@ additional=${10}
 
 echo "build index started" 
 date
-mrfast --index $ref --ws $hashsz && \
+mrfast --index $ref --ws 12 && \
 echo "align started" && \
 date && \
-mrfast --search $ref $additional --seq1 $reads1 --seq2 $reads2 -o $out/$reads1_base.sam && \
-echo "align date" && \
+mrfast --search $ref $additional --pe --seq1 $reads1 --seq2 $reads2 --min 0 --max 500 -o $out/$reads1_base.sam && \
+echo "align done" && \
 date

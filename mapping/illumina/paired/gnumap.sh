@@ -1,14 +1,16 @@
 #!/bin/bash
-#USAGE ./gnumap.sh reference ref_base_name reads reads_base_name result threads hashsz additional
+#USAGE ./gnumap.sh reference ref_base_name reads1 reads1_base_name reads2 reads2_base_name result threads hashsz additional
 
 ref=$1
 ref_base=$2
-reads=$3
-reads_base=$4
-out=$5
-threads=$6
-hashsz=$7
-additional=$8
+reads1=$3
+reads1_base=$4
+reads2=$5
+reads2_base=$6
+out=$7
+threads=$8
+hashsz=$9
+additional=${10}
 
 echo "mapping started" 
 date

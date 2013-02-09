@@ -12,6 +12,8 @@ threads=$8
 hashsz=$9
 additional=${10}
 
+dir=$(dirname $(readlink -e $0))
+
 echo "build started" 
 date 
 MosaikBuild -fr $ref -oa $out/$ref_base.dat && \
@@ -19,6 +21,6 @@ MosaikBuild -q $reads1 -out $out/$reads1_base.dat -st Illumina && \
 MosaikBuild -q $reads2 -out $out/$reads2_base.dat -st Illumina && \
 echo "align started" && \
 date && \
-MosaikAligner -p $threads -hs $hashsz -in $out/$reads1_base.dat -in $out/$reads2_base.dat -out $out/$reads1_base -ia $out/$ref_base.dat -annpe $MOSAIK_ANN/pe.ann -annse $MOSAIK_ANN/se.ann && \
+MosaikAligner -p $threads -hs $hashsz -in $out/$reads1_base.dat -in $out/$reads2_base.dat -out $out/$reads1_base -ia $out/$ref_base.dat -annpe $dir/../../../misc/pe.ann -annse $dir/../../../misc/se.ann && \
 echo "align done" && \
 date

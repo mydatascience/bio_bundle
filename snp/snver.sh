@@ -8,5 +8,5 @@ out=$4
 additional=$5
 
 date
-java -jar $SNVER/SNVerIndividual.jar -i $bam -r $ref -o $out/$name
+java -jar $TOOLS_PATH/SNVerIndividual.jar -i $bam -r $ref -o $out/$name
 date

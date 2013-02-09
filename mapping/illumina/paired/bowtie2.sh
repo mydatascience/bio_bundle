@@ -12,11 +12,11 @@ threads=$8
 hashsz=$9
 additional=${10}
 
-echo "build started" | tee -a $out/log 
+echo "build started" 
 date 
 bowtie2-build $ref $out/$ref_base.ind && \
 echo "mapping started" && \
 date && \
-bowtie2 -t -q -p $threads -a --fr --minins 0 --maxins 500 --sam $out/$ref_base.ind -1 $reads1 -2 $reads2 > $out/$reads1_base.sam && \
+bowtie2 -t -q -p $threads -a --fr --minins 0 --maxins 500 $out/$ref_base.ind -1 $reads1 -2 $reads2 > $out/$reads1_base.sam && \
 echo "mapping done" && \
 date

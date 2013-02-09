@@ -8,58 +8,64 @@ import sys
 import shutil
 import subprocess
 
-os.environ['MOSAIK_ANN'] = "/home/kate"
-os.environ['STAMPY'] = "/home/kate/bioinf/soft/stampy-1.0.21/stampy.py"
-os.environ['SNVER'] = "/home/kate/bioinf/soft/"
-os.environ['SHORE_SCORE'] = "/home/kate/bioinf/soft/shore-Linux-x86_64-0.7.1beta/scoring_matrices"
 dirname = os.path.dirname(sys.argv[0])
-base_name_pattern = re.compile("(\w+)(\.\w+)$")
+base_name_pattern = re.compile("([^/.]+)([^/]+)$")
 
-#TODO doesn't work
-def check_space(directory, storage):
-    stat = os.statvfs(out_dir)
-    free_sp = stat.f_bsize * stat.f_bavail / 1024.0 / 1024 / 1024
-    if (free_sp <= 10):
-        sys.stderr.write("Only " + str(free_sp) + "Gb of space left")
-        if (args.storage):
-            stat = os.statvfs(args.storage)
-            free_store = stat.f_bsize * stat.f_bavail / 1024.0 / 1024 / 1024
-            if (free_store < 5):
-                sys.stderr("Storage has only " + str(free_store) + "Gb left")
-            else:
-                sys.stderr("Moving all sorted bam files, it's indexes and vcf files to external storage, removing " + out_dir)
-                while True:
-                    return
-                        
+def cache(directory, storage):
+    if (not os.path.exists(storage)):
+        os.makedirs(storage)
+    stat = os.statvfs(storage)
+    free_space = stat.f_bsize * stat.f_bavail / 1024.0 / 1024 / 1024
+    if (free_space < 5):
+        sys.stderr("Storage has only " + str(free_space) + "Gb left. Not enought space to continue.")
+        sys.exit(-1)
+    else:
+        sys.stderr.write("Moving all sorted bam files, it's indexes and vcf files to external storage, removing " + directory + "\n")
+        base_path = storage + "/" + os.path.basename(directory)
+        for root, dirs, files in os.walk(directory):
+            store = []
+            for f in files:
+                if (f.find("metrics") != -1 or
+                        (len(f) > 4 and f[-4:] == ".log") or
+                        (len(f) > 4 and f[-4:] == ".vcf") or
+                        (len(f) > 11 and f[-11:] == ".sorted.bam")):
+                    store.append(f)
+            if (len(store) > 0):
+                print root + " " + directory
+                rel_path = os.path.relpath(root, directory)
+                new_dir = base_path + "/" + rel_path if (root != directory) else base_path
+                print new_dir
+                if (not os.path.exists(new_dir)):
+                    os.makedirs(new_dir)
+                for f in store:
+                    print f + " " + new_dir + "/" + f
+                    shutil.copyfile(root + "/" + f, new_dir + "/" + f)
+        shutil.rmtree(directory)
 
 def test_bam(bam, ref, out_dir, is_paired):
     log = open(out_dir + "/metrics_log", "a")
-    subprocess.call("picard-tools CollectAlignmentSummaryMetrics I=\"" + bam 
+    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectAlignmentSummaryMetrics.jar I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_summ\"" 
-            + "R=\"" + ref + "\"",
+            + " R=\"" + ref + "\"",
             stdout=log, stderr=log, shell=True)
-    subprocess.call("picard-tools CollectMultipleMetrics I=\"" + bam 
+    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectMultipleMetrics.jar I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_mult\"" 
-            + "R=\"" + ref + "\"",
+            + " R=\"" + ref + "\"",
             stdout=log, stderr=log, shell=True)
-    subprocess.call("picard-tools CalculateHsMetrics I=\"" + bam 
-            + "\" O=\"" + out_dir + "/metrics_hs\"" 
-            + "R=\"" + ref + "\"",
-            stdout=log, stderr=log, shell=True)
-    subprocess.call("picard-tools CollectGcBiasMetrics I=\"" + bam 
+    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectGcBiasMetrics.jar I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_gc\"" 
-            + "R=\"" + ref + "\"",
+            + " R=\"" + ref 
+            + "\" CHART=\"" + out_dir + "/metrics_gc.pdf\"",
             stdout=log, stderr=log, shell=True)
     if (is_paired):
-        subprocess.call("picard-tools CollectInsertSizeMetrics I=\"" + bam 
+        subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectInsertSizeMetrics.jar I=\"" + bam 
                 + "\" O=\"" + out_dir + "/metrics_ins\"" 
-                + "R=\"" + ref + "\" H=\"" + out_dir + "/metrics_hist",
+                + " R=\"" + ref 
+                + "\" H=\"" + out_dir + "/metrics_ins.pdf\"",
                 stdout=log, stderr=log, shell=True)
 
 def make_bam(directory, ref):
     files = os.listdir(directory)
-    print files
-    print directory
     aln = ""
     for f in files:
         if (len(f) <= 4):
@@ -80,13 +86,11 @@ def make_bam(directory, ref):
                 + " > \"" + directory + "/" + aln[0:-3] + "bam\"" ,
                 stderr=log, stdout=log, shell=True)
         aln = aln[0:-3] + "bam"
-    rs = subprocess.call("samtools sort \"" + directory + "/" + aln 
+    subprocess.call("samtools sort \"" + directory + "/" + aln 
             + "\" \"" + directory + "/" + aln[0:-3] + "sorted\"",
             stderr=log, stdout=log, shell=True)
-    print rs
-    rs = subprocess.call("samtools index \"" + directory + "/" + aln[0:-3] + "sorted.bam\"",
+    subprocess.call("samtools index \"" + directory + "/" + aln[0:-3] + "sorted.bam\"",
             stderr=log, stdout=log, shell=True)
-    print rs
     return 0
 
 def mapping_paired(mapper, reads1, reads2, ref, out_dir, threads, hashsz, additional):
@@ -200,15 +204,19 @@ if (not os.path.exists(args.out)):
 
 if (not need_map):
     for caller in snp_callers:
-        snp_calling(caller, args.input, args.ref, args.out, "")
+        prog_name = caller[caller.rfind('/') + 1:-3]
+        print "Variant calling with " + prog_name + " started"
+        out_dir_snp = args.out + "/" + prog_name
+        snp_calling(caller, bam, args.ref, out_dir_snp, "")
+        print "Variant calling with " + caller + " done"
         sys.exit(0)
 else:
     reads1 = args.input if args.input else args.reads1
     reads2 = args.reads2 if is_paired else ""
 
     for mapper in mappers:
-
         prog_name = mapper[mapper.rfind('/') + 1:-3]
+        print "Mapping with " + prog_name + " started"
         out_dir = args.out + "/" + prog_name
 
         if (is_paired):
@@ -221,16 +229,21 @@ else:
         log.write("making indexed sorted bam file done: " + str(datetime.now()))
         log.close()
         bam = out_dir + "/" + base_name_pattern.search(reads1).group(1) + ".sorted.bam"
-        print bam
 
-        subprocess.call("ls " + out_dir, shell=True)
-        print str(os.path.exists(bam))
+        print "Mapping with " + prog_name + " done: "
 
         if (os.path.exists(bam)):
+            print "    Succeeded"
             if (not args.skip_test):
                 test_bam(bam, args.ref, out_dir, is_paired)
 
             for caller in snp_callers:
                 prog_name = caller[caller.rfind('/') + 1:-3]
+                print "Variant calling with " + prog_name + " started"
                 out_dir_snp = out_dir + "/" + prog_name
                 snp_calling(caller, bam, args.ref, out_dir_snp, "")
+                print "Variant calling with " + prog_name + " done"
+        else:
+            print "    Failed"
+        if (args.storage):
+            cache(out_dir, args.storage)

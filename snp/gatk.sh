@@ -7,7 +7,8 @@ name=$3
 out=$4
 additional=$5
 
-picard-tools AddOrReplaceReadGroups RGLB=$ref RGPL=Unknown RGSM=unknown INPUT=$reads OUTPUT=$out/aln_rg.bam RGPU=run &&
-date
-GenomeAnalysisTKLite.jar -R $reads -I $out/aln_rg.bam -T UnifiedGenotyper -o $out/out.vcf
+java -jar $TOOLS_PATH/picard-tools-1.84/AddOrReplaceReadGroups.jar RGLB=$ref RGPL=Unknown RGSM=unknown INPUT=$bam OUTPUT=$out/$name.rg.bam RGPU=run && \
+samtools index $out/$name.rg.bam && \
+date && \
+java -jar $TOOLS_PATH/GenomeAnalysisTKLite.jar -R $ref -I $out/$name.rg.bam -T UnifiedGenotyper -o $out/$name.vcf && \
 date
