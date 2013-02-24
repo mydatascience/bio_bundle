@@ -11,10 +11,13 @@ hashsz=$7
 additional=$8
 
 echo "build started" 
-date 
+date
+echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 bowtie-build $ref $out/$ref_base.ind && \
 echo "mapping started" && \
 date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 bowtie -t -q -p $threads $additional --best --sam $out/$ref_base.ind $reads > $out/$reads_base.sam && \
 echo "mapping done" && \
-date
+date && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log

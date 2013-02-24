@@ -9,9 +9,9 @@ additional=$5
 
 echo "pileup started"
 date
-samtools-hybrid pileup -gf $ref $bam > $out/aln.glf &&
+samtools-hybrid pileup -gf $ref $bam > $out/$name.glf &&
 echo "snp calling started"
 date
-glfMultiples -b $out/out.vcf $out/aln.glf
+glfMultiples -b $out/$name.vcf $out/$name.glf
 echo "snp calling done"
 date

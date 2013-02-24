@@ -14,11 +14,12 @@ samtools mpileup -f $ref $bam > $out/$name.bcf
 if [ -s $out/$name.bcf ]; then
     echo "SNP search started"
     date
-    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2indel $out/$name.bcf > $out/$name.indel.vcf
+    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2indel $out/$name.bcf --output-vcf > $out/$name.indel.vcf
     echo "indel search started"
     date
-    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2snp $out/$name.bcf > $out/$name.snp.vcf
+    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2snp $out/$name.bcf --output-vcf > $out/$name.snp.vcf
     echo "indel search done"
 else 
     date
+    vcf-concat $out/$name.*.vcf > $out/$name.vcf
 fi

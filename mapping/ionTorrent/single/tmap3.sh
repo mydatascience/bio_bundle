@@ -12,6 +12,7 @@ additional=$8
 
 echo "mapping started" 
 date 
-tmap map3 $additional -n $threads -f $ref -r $reads > $out/$reads_base.sam && \
+tmap index -f $ref -w $hashsz && \
+tmap map3 $additional -R SM:Unknown -n $threads -f $ref -r $reads > $out/$reads_base.sam && \
 echo "mapping done" && \
 date

@@ -10,8 +10,9 @@ threads=$6
 hashsz=$7
 additional=$8
 
-echo "build index started" | tee -a $out/log
-date 
+echo "build index started" 
+date
+echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 bfast fasta2brg -f $ref && \
 bfast index -n $threads -t -f $ref -m 1111111111111111111111 -w $hashsz -i 1 && \
 bfast index -n $threads -t -f $ref -m 1111101110111010100101011011111 -w $hashsz -i 2 && \
@@ -22,9 +23,10 @@ bfast index -n $threads -t -f $ref -m 111111100101001000101111101110111 -w $hash
 bfast index -n $threads -t -f $ref -m 11110101110010100010101101010111111 -w $hashsz -i 7 && \
 bfast index -n $threads -t -f $ref -m 111101101011011001100000101101001011101 -w $hashsz -i 8 && \
 bfast index -n $threads -t -f $ref -m 1111011010001000110101100101100110100111 -w $hashsz -i 9 && \
-bfast index -n $threads -t -f $ref -m 1111010010110110101110010110111011 -w $hashsz -i 10 && \
-echo "match started" && \
-date && \
+bfast index -n $threads -t -f $ref -m 1111010010110110101110010110111011 -w $hashsz -i 10
+echo "match started" 
+date 
+echo -e "2\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 bfast match -n $threads -f $ref -r $reads > $out/$reads_base.matches.s && \
 echo "localalign started" && \
 date && \
@@ -33,4 +35,5 @@ echo "postprocess started" && \
 date && \
 bfast postprocess -n $threads -f $ref -O 1 -i $out/$reads_base.aligned.s > $out/$reads_base.sam && \
 echo "postprocess done" && \
-date
+date && \
+echo -e "3\tAlignment done\t"`date +%s` >> $out/mapping_time.log

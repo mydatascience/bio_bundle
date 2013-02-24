@@ -46,7 +46,7 @@ def test_bam(bam, ref, out_dir, is_paired):
     log = open(out_dir + "/metrics_log", "a")
     subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectAlignmentSummaryMetrics.jar I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_summ\"" 
-            + " R=\"" + ref + "\"",
+            + " R=\"" + ref + "\" VALIDATION_STRINGENCY=SILENT",
             stdout=log, stderr=log, shell=True)
     subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectMultipleMetrics.jar I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_mult\"" 
@@ -55,13 +55,15 @@ def test_bam(bam, ref, out_dir, is_paired):
     subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectGcBiasMetrics.jar I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics_gc\"" 
             + " R=\"" + ref 
-            + "\" CHART=\"" + out_dir + "/metrics_gc.pdf\"",
+            + "\" CHART=\"" + out_dir + "/metrics_gc.pdf\" ASSUME_SORTED=true"
+            + " VALIDATION_STRINGENCY=SILENT ASSUME_SORTED=true",
             stdout=log, stderr=log, shell=True)
     if (is_paired):
         subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectInsertSizeMetrics.jar I=\"" + bam 
                 + "\" O=\"" + out_dir + "/metrics_ins\"" 
                 + " R=\"" + ref 
-                + "\" H=\"" + out_dir + "/metrics_ins.pdf\"",
+                + "\" H=\"" + out_dir + "/metrics_ins.pdf\""
+                + " VALIDATION_STRINGENCY=SILENT",
                 stdout=log, stderr=log, shell=True)
 
 def make_bam(directory, ref):
@@ -85,10 +87,12 @@ def make_bam(directory, ref):
                 + "\" \"" + directory + "/" + aln + "\" "
                 + " > \"" + directory + "/" + aln[0:-3] + "bam\"" ,
                 stderr=log, stdout=log, shell=True)
+        os.remove(directory + "/" + aln)
         aln = aln[0:-3] + "bam"
     subprocess.call("samtools sort \"" + directory + "/" + aln 
             + "\" \"" + directory + "/" + aln[0:-3] + "sorted\"",
             stderr=log, stdout=log, shell=True)
+    os.remove(directory + "/" + aln)
     subprocess.call("samtools index \"" + directory + "/" + aln[0:-3] + "sorted.bam\"",
             stderr=log, stdout=log, shell=True)
     return 0
@@ -207,9 +211,9 @@ if (not need_map):
         prog_name = caller[caller.rfind('/') + 1:-3]
         print "Variant calling with " + prog_name + " started"
         out_dir_snp = args.out + "/" + prog_name
-        snp_calling(caller, bam, args.ref, out_dir_snp, "")
-        print "Variant calling with " + caller + " done"
-        sys.exit(0)
+        snp_calling(caller, args.input, args.ref, out_dir_snp, "")
+        print "Variant calling with " + prog_name + " done"
+    sys.exit(0)
 else:
     reads1 = args.input if args.input else args.reads1
     reads2 = args.reads2 if is_paired else ""
@@ -232,7 +236,7 @@ else:
 
         print "Mapping with " + prog_name + " done: "
 
-        if (os.path.exists(bam)):
+        if (os.path.exists(bam) and os.path.getsize(bam) > 0):
             print "    Succeeded"
             if (not args.skip_test):
                 test_bam(bam, args.ref, out_dir, is_paired)

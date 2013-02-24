@@ -15,6 +15,7 @@ dir=$(dirname $(readlink -e $0))
 echo "build started" 
 date 
 MosaikBuild -fr $ref -oa $out/$ref_base.dat && \
+date && \
 MosaikBuild -q $reads -out $out/$reads_base.dat -st Illumina && \
 echo "align started" && \
 date && \

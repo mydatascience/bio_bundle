@@ -20,4 +20,7 @@ echo "start snp calling" && \
 date && \
 shore qVar -n Unknown -f $out/index/$(basename $ref).shore -i $out/map.list -s $dir/../misc/scoring_matrix_het.txt -o $out/$name && \
 echo "snp calling done" && \
+date && \
+vcf-concat $out/$name/ConsensusAnalysis/*.vcf > $out/$name.vcf && \
+echo "succeed" && \
 date

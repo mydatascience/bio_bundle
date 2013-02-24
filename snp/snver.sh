@@ -8,5 +8,6 @@ out=$4
 additional=$5
 
 date
-java -jar $TOOLS_PATH/SNVerIndividual.jar -i $bam -r $ref -o $out/$name
-date
+java -jar $TOOLS_PATH/SNVerIndividual.jar -i $bam -r $ref -o $out/$name && \
+date && \
+vcf-concat $out/$name.filter.vcf $out/$name.indel.filter.vcf > $out/$name.vcf

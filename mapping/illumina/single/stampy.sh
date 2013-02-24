@@ -18,6 +18,6 @@ date && \
 python $StampyPATH/stampy.py -g $out/$ref_base -H $out/$ref_base && \
 echo "align started" && \
 date && \
-python $StampyPATH/stampty.py $additional -g $out/$ref_base -h $out/$ref_base -t $threads --bamkeepgoodreads -M $reads > $out/$reads_base.sam && \
+python $StampyPATH/stampy.py $additional -g $out/$ref_base -h $out/$ref_base -t $threads --bamkeepgoodreads -M $reads > $out/$reads_base.sam && \
 echo "align done" && \
 date
