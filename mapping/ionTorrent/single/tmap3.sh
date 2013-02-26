@@ -10,9 +10,13 @@ threads=$6
 hashsz=$7
 additional=$8
 
-echo "mapping started" 
 date 
+echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 tmap index -f $ref -w $hashsz && \
+echo "mapping started" && \
+date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 tmap map3 $additional -R SM:Unknown -n $threads -f $ref -r $reads > $out/$reads_base.sam && \
 echo "mapping done" && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log && \
 date

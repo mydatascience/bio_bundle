@@ -9,5 +9,7 @@ additional=$5
 
 samtools faidx $ref
 date
+echo -e "0\tStart\t"`date +%s` >> $out/snp_time.log 
 samtools mpileup -uf $ref $bam | bcftools view -cvg - > $out/$name.vcf
+echo -e "1\tEnd\t"`date +%s` >> $out/snp_time.log 
 date

@@ -26,7 +26,7 @@ bfast index -n $threads -t -f $ref -m 1111011010001000110101100101100110100111 -
 bfast index -n $threads -t -f $ref -m 1111010010110110101110010110111011 -w $hashsz -i 10
 echo "match started" 
 date 
-echo -e "2\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 bfast match -n $threads -f $ref -r $reads > $out/$reads_base.matches.s && \
 echo "localalign started" && \
 date && \
@@ -36,4 +36,4 @@ date && \
 bfast postprocess -n $threads -f $ref -O 1 -i $out/$reads_base.aligned.s > $out/$reads_base.sam && \
 echo "postprocess done" && \
 date && \
-echo -e "3\tAlignment done\t"`date +%s` >> $out/mapping_time.log
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log

@@ -1,5 +1,5 @@
 #!/bin/bash
-#USAGE ./mosaik.sh reference ref_base_name reads1 reads1_base_name reads2 reads2_base_name result threads hashsz additional
+#USAGE ./razers.sh reference ref_base_name reads1 reads1_base_name reads2 reads2_base_name result threads hashsz additional
 
 ref=$1
 ref_base=$2
@@ -14,6 +14,8 @@ additional=${10}
 
 echo "mapping started" && \
 date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 razers3 $additional -i 94 -rr 97 -tc $threads --output-format sam -o $out/$reads1_base.sam $ref $reads1 $reads2 && \
 echo "mapping done" && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log && \
 date

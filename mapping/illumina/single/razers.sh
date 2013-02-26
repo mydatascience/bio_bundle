@@ -12,6 +12,8 @@ additional=$8
 
 echo "mapping started" && \
 date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 razers3 $additional -i 94 -rr 97 -tc $threads --output-format sam -o $out/$reads_base.sam $ref $reads && \
 echo "mapping done" && \
-date
+date && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log

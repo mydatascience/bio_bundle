@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from argparse import ArgumentParser
+import time
 from datetime import datetime
 import os
 import re
@@ -44,27 +45,12 @@ def cache(directory, storage):
 
 def test_bam(bam, ref, out_dir, is_paired):
     log = open(out_dir + "/metrics_log", "a")
-    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectAlignmentSummaryMetrics.jar I=\"" + bam 
-            + "\" O=\"" + out_dir + "/metrics_summ\"" 
+    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectMultipleMetrics.jar I=\"" + bam 
+            + "\" O=\"" + out_dir + "/metrics\" ASSUME_SORTED=true" 
+            + " PROGRAM=CollectAlignmentSummaryMetrics"
+            + " PROGRAM=CollectInsertSizeMetrics" 
             + " R=\"" + ref + "\" VALIDATION_STRINGENCY=SILENT",
             stdout=log, stderr=log, shell=True)
-    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectMultipleMetrics.jar I=\"" + bam 
-            + "\" O=\"" + out_dir + "/metrics_mult\"" 
-            + " R=\"" + ref + "\"",
-            stdout=log, stderr=log, shell=True)
-    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectGcBiasMetrics.jar I=\"" + bam 
-            + "\" O=\"" + out_dir + "/metrics_gc\"" 
-            + " R=\"" + ref 
-            + "\" CHART=\"" + out_dir + "/metrics_gc.pdf\" ASSUME_SORTED=true"
-            + " VALIDATION_STRINGENCY=SILENT ASSUME_SORTED=true",
-            stdout=log, stderr=log, shell=True)
-    if (is_paired):
-        subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectInsertSizeMetrics.jar I=\"" + bam 
-                + "\" O=\"" + out_dir + "/metrics_ins\"" 
-                + " R=\"" + ref 
-                + "\" H=\"" + out_dir + "/metrics_ins.pdf\""
-                + " VALIDATION_STRINGENCY=SILENT",
-                stdout=log, stderr=log, shell=True)
 
 def make_bam(directory, ref):
     files = os.listdir(directory)
@@ -95,6 +81,9 @@ def make_bam(directory, ref):
     os.remove(directory + "/" + aln)
     subprocess.call("samtools index \"" + directory + "/" + aln[0:-3] + "sorted.bam\"",
             stderr=log, stdout=log, shell=True)
+
+    time_log = open(out_dir + "/mapping_time.log", "a")
+    time_log.write("3\tSorted bam file done\t" + str(int(time.mktime(datetime.now().timetuple()))))
     return 0
 
 def mapping_paired(mapper, reads1, reads2, ref, out_dir, threads, hashsz, additional):

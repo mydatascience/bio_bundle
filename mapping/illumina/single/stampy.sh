@@ -12,12 +12,15 @@ additional=$8
 
 echo "build index started"
 date
+echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 python $StampyPATH/stampy.py -G $out/$ref_base $ref && \
 echo "building hash started" && \
 date && \
 python $StampyPATH/stampy.py -g $out/$ref_base -H $out/$ref_base && \
 echo "align started" && \
 date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 python $StampyPATH/stampy.py $additional -g $out/$ref_base -h $out/$ref_base -t $threads --bamkeepgoodreads -M $reads > $out/$reads_base.sam && \
 echo "align done" && \
-date
+date && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log

@@ -12,9 +12,12 @@ additional=$8
 
 echo "build index started" 
 date
+echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 bwa index -a bwtsw $ref && \
 echo "alignment started" && \
 date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 bwa bwasw -t $threads $ref $reads > $out/$reads_base.sam && \
 echo "alignment done" && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log && \
 date 

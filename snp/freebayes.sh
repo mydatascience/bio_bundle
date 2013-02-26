@@ -8,5 +8,7 @@ out=$4
 additional=$5
 
 date
-freebayes $additional -b $bam -f $ref -v $out/$name.vcf
+echo -e "0\tStart\t"`date +%s` >> $out/snp_time.log 
+freebayes $additional -b $bam -f $ref -v $out/$name.vcf 
+echo -e "1\tEnd\t"`date +%s` >> $out/snp_time.log 
 date

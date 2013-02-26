@@ -14,6 +14,8 @@ additional=${10}
 
 echo "mapping started" 
 date
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 gnumap-plain $additional -g $ref -c $threads -m $hashsz -o $out/$reads1_base $reads1 $reads2 && \
 echo "mapping started" && \
-date
+date &&
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log

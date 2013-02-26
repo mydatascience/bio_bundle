@@ -14,9 +14,12 @@ additional=${10}
 
 echo "build started" 
 date 
+echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 bowtie-build $ref $out/$ref_base.ind && \
 echo "mapping started" && \
 date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 bowtie -t -q -p $threads -a --fr --minins 0 --maxins 500 --sam $out/$ref_base.ind -1 $reads1 -2 $reads2 > $out/$reads1_base.sam && \
 echo "mapping done" && \
-date
+date && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log

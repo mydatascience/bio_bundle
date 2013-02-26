@@ -10,14 +10,14 @@ threads=$6
 hashsz=$7
 additional=$8
 
-echo "build started" | tee -a $out/log 
+echo "build started" 
 date 
 echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 bowtie2-build $ref $out/$ref_base.ind && \
 echo "mapping started" && \
 date && \
-echo -e "2\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 bowtie2 -t -q -p $threads --sensitive --sam-rg -x $out/$ref_base.ind -U $reads > $out/$reads_base.sam && \
 echo "mapping done" && \
-date && \
-echo -e "3\tAlignment done\t"`date +%s` >> $out/mapping_time.log
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log && \
+date 

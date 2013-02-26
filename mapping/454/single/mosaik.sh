@@ -14,10 +14,13 @@ dir=$(dirname $(readlink -e $0))
 
 echo "build started" 
 date 
+echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 MosaikBuild -fr $ref -oa $out/$ref_base.dat && \
 MosaikBuild -q $reads -out $out/$reads_base.dat -st 454 && \
 echo "align started" && \
 date && \
+echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
 MosaikAligner -p $threads -hs $hashsz -in $out/$reads_base.dat -out $out/$reads_base -ia $out/$ref_base.dat -annpe $dir/../../../misc/pe.ann -annse $dir/../../../misc/se.ann && \
 echo "align done" && \
+echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log && \
 date
