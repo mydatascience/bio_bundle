@@ -7,6 +7,7 @@ from datetime import timedelta
 import os
 import subprocess
 import shutil
+import sys
 
 aln_metrics_defs = {'CATEGORY':'Категория', 'PF_READS_ALIGNED':'Число выровненных ридов', 'PF_HQ_ALIGNED_READS':'Число ридов, выровненных с высоким качеством', 'READS_ALIGNED_IN_PAIRS':'Число ридов, выровненных в парах', 'PF_MISMATCH_RATE':'Число ошибок заменой', 'PF_INDEL_RATE':'Число ошибок вставкой'}
 ins_size_metrics_defs = {'MEAN_INSERT_SIZE':'Среднее расстояние вставки', 'MIN_INSERT_SIZE':'Минимальное расстояние вставки', 'MAX_INSERT_SIZE':'Максимальное расстояние вставки', 'STANDARD_DEVIATION':'Среднеквадратичное отклонение расстояния вставки'}
@@ -158,12 +159,12 @@ def parse_vcf_stats(filename, vcf_name):
                 if (values[2] != "number of samples:"):
                     vcf_stats.SN[int(values[1])][values[2][:-1]] = values[-1]
             elif (values[0] == "SiS"):
-                vcf_stats.SiS[int(values[1])] = dict(zip(keys[2:], values[2:]))
+                vcf_stats.SiS[int(values[1])] = dict(zip(keys[1:], values[2:]))
             elif (values[0] == "AF"):
                 vcf_stats.AF[int(values[1])].append(dict(zip(keys[1:], values[2:])))
     for i in range(len(vcf_stats.ID)):
         if (len(vcf_stats.ID[i]) == 1):
-            print vcf_stats.ID[i][0] + " " + vcf_name
+#            print vcf_stats.ID[i][0] + " " + vcf_name
             if (os.path.basename(vcf_stats.ID[i][0]) == os.path.basename(vcf_name + ".gz")):
                 vcf_stats.ID[i] = "результат"
             else:
@@ -173,6 +174,7 @@ def parse_vcf_stats(filename, vcf_name):
     return vcf_stats
 
 def process_vcf(aligner_name, var_caller_name, res_dir, filename, golden, var_caller):
+    print aligner_name + " " + var_caller_name
     res_base = aligner_name + "." + var_caller_name
     vcf_name = os.path.basename(filename)
     err_log = open(res_dir + "/err.log", "a")
@@ -180,8 +182,8 @@ def process_vcf(aligner_name, var_caller_name, res_dir, filename, golden, var_ca
     subprocess.call("bgzip -c " + filename, stdout=vcf_bgzip, stderr=err_log, shell=True)
     vcf_bgzip.close()
     subprocess.call("tabix -p vcf " + filename + ".gz", stderr=err_log, shell=True)
-    vcf_chk = open(res_dir + "/" + res_base + ".single.vchk", "w")
-    if (subprocess.call("vcf check " + filename + ".gz", stdout=vcf_chk, stderr=err_log, shell=True) == 0):
+    vcf_chk = open(res_dir + "/" + res_base + ".single.vchk", "w", 0)
+    if (subprocess.call("vcf check " + filename + ".gz | cat ", stdout=vcf_chk, stderr=err_log, shell=True) == 0):
         vcf_chk.close()
         subprocess.call("plot-vcfcheck -p " + res_dir + "/plots/" 
             + res_base + ".single" + " " 
@@ -353,7 +355,10 @@ for aln in aligners:
         tex_f.write("\\multirow{" + str(len(aln.metrics)) + "}{*}{" + aln.name + "}")
         for metric in aln.metrics:
             for metric_name in aln_metrics_defs.keys():
-                tex_f.write(" & " + metric[metric_name])
+                if (metric_name in metric.keys()):
+                    tex_f.write(" & " + metric[metric_name])
+                else:
+                    tex_f.write(" & 0")
             if (metric['CATEGORY'] == "PAIR"):
                 for metric_name in ins_size_metrics_defs.keys():
                     tex_f.write(" & " + aln.ins_metrics[metric_name])
@@ -447,7 +452,7 @@ for aligner in var_callers.keys():
 ''')
 
     for var_caller in var_callers[aligner]:
-        print var_caller
+#        print var_caller
         if (var_caller.single_stats.AF != []):
             tex_f.write("\\multirow{" + str(len(var_caller.single_stats.AF[0])) + "}{*}{" + var_caller.name + "}") 
             for i in range(len(var_caller.single_stats.AF[0])):
@@ -529,38 +534,6 @@ if args.vcf != None:
                     + var_caller.shared_stats.SiS[i]["number of transversions"] + " & "
                     + var_caller.shared_stats.SiS[i]["number of indels"] + "\\\\\n")
             tex_f.write("\\hline\n")
-        tex_f.write("\\hline\n")
-        tex_f.write(r'''
-\end{tabular}
-\end{center}
-\end{table}
-''')
-
-        tex_f.write(r'''
-\begin{table}[H]
-\caption{Статистики по не референсной аллели результатов работы инструментов для поиска полиморфизмов}
-\begin{center}
-\begin{tabular}{|p{2cm}|''' 
-            + (("p{2cm}") * 5) + "|}")
-
-        tex_f.write(r'''
-\hline\hline
-Название & Частота встречаемости аллели & Число SNP & Число transitions & Число transversions & Число вставок \\ [0.5ex]
-\hline\hline
-''')
-
-        for var_caller in var_callers[aligner]:
-            print var_caller
-            if (var_caller.single_stats.AF != []):
-                tex_f.write("\\multirow{" + str(len(var_caller.single_stats.AF[0])) + "}{*}{" + var_caller.name + "}") 
-                for i in range(len(var_caller.single_stats.AF[0])):
-                    tex_f.write(" & "  
-                    + var_caller.single_stats.AF[0][i]["allele frequency"] + " & "
-                    + var_caller.single_stats.AF[0][i]["number of SNPs"] + " & "
-                    + var_caller.single_stats.AF[0][i]["number of transitions"] + " & "
-                    + var_caller.single_stats.AF[0][i]["number of transversions"] + " & "
-                    + var_caller.single_stats.AF[0][i]["number of indels"] + "\\\\\n")
-                tex_f.write("\\hline\n")
         tex_f.write("\\hline\n")
         tex_f.write(r'''
 \end{tabular}

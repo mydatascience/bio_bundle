@@ -12,4 +12,4 @@ echo -e "0\tStart\t"`date +%s` >> $out/snp_time.log
 java -jar $TOOLS_PATH/SNVerIndividual.jar -i $bam -r $ref -o $out/$name && \
 echo -e "1\tEnd\t"`date +%s` >> $out/snp_time.log && \
 date && \
-vcf-concat $out/$name.filter.vcf $out/$name.indel.filter.vcf > $out/$name.vcf
+vcf-concat $out/$name.filter.vcf $out/$name.indel.filter.vcf | vcf-sort > $out/$name.vcf

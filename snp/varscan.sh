@@ -22,7 +22,7 @@ if [ -s $out/$name.bcf ]; then
     echo "indel search done"
     date
     echo -e "1\tEnd\t"`date +%s` >> $out/snp_time.log 
+    vcf-concat $out/$name.*.vcf | vcf-sort > $out/$name.vcf
 else 
     date
-    vcf-concat $out/$name.*.vcf > $out/$name.vcf
 fi
