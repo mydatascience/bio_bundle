@@ -78,9 +78,9 @@ class VarCaller:
             + "\ntime = " + str(self.time)
             + "\nsingle statistics: \n" + str(self.single_stats)
             + "\nshared statistics: \n" + str(self.shared_stats))
+
     def empty(self):
-        return (self.time == timedelta(0)
-            and self.single_stats.empty()
+        return (self.single_stats.empty()
             and self.shared_stats.empty())
 
 def parse_aln_summ_metrics(filename):
@@ -171,6 +171,8 @@ def parse_vcf_stats(filename, vcf_name):
                 vcf_stats.ID[i] = "эталон"
         else:
             vcf_stats.ID[i] = "общий"
+    if (not vcf_stats.empty() and vcf_stats.SN[0] == {}):
+        return VCFStats()
     return vcf_stats
 
 def process_vcf(aligner_name, var_caller_name, res_dir, filename, golden, var_caller):
@@ -179,7 +181,8 @@ def process_vcf(aligner_name, var_caller_name, res_dir, filename, golden, var_ca
     vcf_name = os.path.basename(filename)
     err_log = open(res_dir + "/err.log", "a")
     vcf_bgzip = open(filename + ".gz", "w")
-    subprocess.call("bgzip -c " + filename, stdout=vcf_bgzip, stderr=err_log, shell=True)
+    subprocess.call("vcf-sort " + filename + " | bgzip -c", 
+        stdout=vcf_bgzip, stderr=err_log, shell=True)
     vcf_bgzip.close()
     subprocess.call("tabix -p vcf " + filename + ".gz", stderr=err_log, shell=True)
     vcf_chk = open(res_dir + "/" + res_base + ".single.vchk", "w", 0)
@@ -240,8 +243,6 @@ for aln_name in aln_dirs:
 
     if (not curr_aligner.empty()):
         aligners.append(curr_aligner)
-    else:
-        continue
 
     for var_caller_name in aln_files:
         curr_var_dir = curr_aln_dir + "/" + var_caller_name
@@ -303,71 +304,72 @@ r'''\documentclass[a4paper]{article}
 
 # Статистика по aligners
 
-tex_f.write(r'''
+if (len(aligners)):
+    tex_f.write(r'''
 \section{Результаты работы инструментов для выравнивания}
 ''')
 
-tex_f.write(r'''
+    tex_f.write(r'''
 \begin{table}[H]
 \caption{Сравнительная таблица продолжительности работы инструментов для выравнивания}
 \begin{center}
 \begin{tabular}{|p{2cm}|p{3cm}p{3cm}p{3cm}p{3cm}|}
 \hline\hline
 ''')
-tex_f.write(r'''Название & Время построения индекса & Время выравнивания & Время построения сортированного bam файла & Общее время \\ [0.5ex]
+    tex_f.write(r'''Название & Время построения индекса & Время выравнивания & Время построения сортированного bam файла & Общее время \\ [0.5ex]
 \hline\hline
 ''')
 
-for aln in aligners:
-    tex_f.write(aln.name + " & " + str(aln.build_ind_time) + " & " + str(aln.aln_time) + " & " + str(aln.make_bam_time) + " & " + str(aln.summ_time) + "\\\\" + "\n" + "\\hline\n")
-tex_f.write(r'''\end{tabular}
+    for aln in aligners:
+        tex_f.write(aln.name + " & " + str(aln.build_ind_time) + " & " + str(aln.aln_time) + " & " + str(aln.make_bam_time) + " & " + str(aln.summ_time) + "\\\\" + "\n" + "\\hline\n")
+    tex_f.write(r'''\end{tabular}
 \end{center}
 \end{table}
 ''')
 
-tex_f.write(r'''
+    tex_f.write(r'''
 \begin{table}[H]
 \caption{Сравнительная таблица результатов работы инструментов для выравнивания}
 \begin{center}
 \begin{tabular}{|p{2cm}|''' 
-    + (("p{" + str(12.0 / (len(aln_metrics_defs) + len(ins_size_metrics_defs))) 
-    + "cm}") * (len(aln_metrics_defs) + len(ins_size_metrics_defs)))
-    + r'''|}
+        + (("p{" + str(12.0 / (len(aln_metrics_defs) + len(ins_size_metrics_defs))) 
+        + "cm}") * (len(aln_metrics_defs) + len(ins_size_metrics_defs)))
+        + r'''|}
 \hline\hline
 Название & ''')
 
-for metric_name in aln_metrics_defs.values():
-    tex_f.write(metric_name)
-    if (metric_name != aln_metrics_defs.values()[-1] or ins_size_metrics_defs != {}):
-        tex_f.write(" & ")
-    else:
-        tex_f.write(" \\\\ [0.5ex]\n")
-for metric in ins_size_metrics_defs.values():
-    tex_f.write(metric)
-    if (metric != ins_size_metrics_defs.values()[-1]):
-        tex_f.write(" & ")
-    else:
-        tex_f.write(" \\\\ [0.5ex]\n")
-tex_f.write("\\hline\\hline\n")
+    for metric_name in aln_metrics_defs.values():
+        tex_f.write(metric_name)
+        if (metric_name != aln_metrics_defs.values()[-1] or ins_size_metrics_defs != {}):
+            tex_f.write(" & ")
+        else:
+            tex_f.write(" \\\\ [0.5ex]\n")
+    for metric in ins_size_metrics_defs.values():
+        tex_f.write(metric)
+        if (metric != ins_size_metrics_defs.values()[-1]):
+            tex_f.write(" & ")
+        else:
+            tex_f.write(" \\\\ [0.5ex]\n")
+    tex_f.write("\\hline\\hline\n")
 
-for aln in aligners:
-    if (aln.metrics != []):
-        tex_f.write("\\multirow{" + str(len(aln.metrics)) + "}{*}{" + aln.name + "}")
-        for metric in aln.metrics:
-            for metric_name in aln_metrics_defs.keys():
-                if (metric_name in metric.keys()):
-                    tex_f.write(" & " + metric[metric_name])
+    for aln in aligners:
+        if (aln.metrics != []):
+            tex_f.write("\\multirow{" + str(len(aln.metrics)) + "}{*}{" + aln.name + "}")
+            for metric in aln.metrics:
+                for metric_name in aln_metrics_defs.keys():
+                    if (metric_name in metric.keys()):
+                        tex_f.write(" & \\verb|" + metric[metric_name] + "|")
+                    else:
+                        tex_f.write(" & 0")
+                if (metric['CATEGORY'] == "PAIR"):
+                    for metric_name in ins_size_metrics_defs.keys():
+                        tex_f.write(" & " + aln.ins_metrics[metric_name])
                 else:
-                    tex_f.write(" & 0")
-            if (metric['CATEGORY'] == "PAIR"):
-                for metric_name in ins_size_metrics_defs.keys():
-                    tex_f.write(" & " + aln.ins_metrics[metric_name])
-            else:
-                tex_f.write(" & " * len(ins_size_metrics_defs.keys()))
-        tex_f.write(" \\\\\n\\hline\n")
+                    tex_f.write(" & " * len(ins_size_metrics_defs.keys()))
+                tex_f.write(" \\\\\n\\hline\n")
 
-tex_f.write("\\hline\n")
-tex_f.write(r'''\end{tabular}
+    tex_f.write("\\hline\n")
+    tex_f.write(r'''\end{tabular}
 \end{center}
 \end{table}
 ''')
@@ -378,13 +380,16 @@ tex_f.write(r'''
 \section{Результаты работы инструментов для поиска полиморфизмов}
 ''')
 
+print var_callers.keys()
 for aligner in var_callers.keys():
+    if (not len(var_callers[aligner])):
+        continue
     tex_f.write("\\subsection{" + aligner + r'''}
 \begin{table}[H]
 \caption{Общая таблица результатов работы инструментов для поиска полиморфизмов}
 \begin{center}
 \begin{tabular}{|p{1.5cm}|''' 
-        + (("p{1.5cm}") * 6) + "|p{1.5cm}|" + "|}")
+        + (("p{1.5cm}") * 6) + "|p{1.5cm}|}")
 
     tex_f.write(r'''
 \hline\hline
@@ -393,7 +398,7 @@ for aligner in var_callers.keys():
 ''')
 
     for var_caller in var_callers[aligner]:
-        if (var_caller.single_stats.SN != []):
+        if (var_caller.single_stats.SN != [] and var_caller.single_stats.SN[0] != {}):
             tex_f.write(var_caller.name + " & " 
                 + var_caller.single_stats.SN[0]["number of SNPs"] + " & "
                 + var_caller.single_stats.SN[0]["number of MNPs"] + " & "
@@ -410,73 +415,15 @@ for aligner in var_callers.keys():
 \end{table}
 ''')
 
-    tex_f.write(r'''
-\begin{table}[H]
-\caption{Singleton статистики результатов работы инструментов для поиска полиморфизмов}
-\begin{center}
-\begin{tabular}{|p{2cm}|''' 
-        + (("p{2cm}") * 4) + "|}")
-
-    tex_f.write(r'''
-\hline\hline
-Название & Число SNP & Число transitions & Число transversions & Число вставок \\ [0.5ex]
-\hline\hline
-''')
-
-    for var_caller in var_callers[aligner]:
-        if (var_caller.single_stats.SiS != []):
-            tex_f.write(var_caller.name + " & " 
-                + var_caller.single_stats.SiS[0]["number of SNPs"] + " & "
-                + var_caller.single_stats.SiS[0]["number of transitions"] + " & "
-                + var_caller.single_stats.SiS[0]["number of transversions"] + " & "
-                + var_caller.single_stats.SiS[0]["number of indels"] + "\\\\\n"
-                + "\\hline\n")
-    tex_f.write("\\hline\n")
-    tex_f.write(r'''
-\end{tabular}
-\end{center}
-\end{table}
-''')
-
-    tex_f.write(r'''
-\begin{table}[H]
-\caption{Статистики по не референсной аллели результатов работы инструментов для поиска полиморфизмов}
-\begin{center}
-\begin{tabular}{|p{2cm}|''' 
-        + (("p{2cm}") * 5) + "|}")
-
-    tex_f.write(r'''
-\hline\hline
-Название & Частота встречаемости аллели & Число SNP & Число transitions & Число transversions & Число вставок \\ [0.5ex]
-\hline\hline
-''')
-
-    for var_caller in var_callers[aligner]:
-#        print var_caller
-        if (var_caller.single_stats.AF != []):
-            tex_f.write("\\multirow{" + str(len(var_caller.single_stats.AF[0])) + "}{*}{" + var_caller.name + "}") 
-            for i in range(len(var_caller.single_stats.AF[0])):
-                tex_f.write(" & "  
-                + var_caller.single_stats.AF[0][i]["allele frequency"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of SNPs"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of transitions"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of transversions"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of indels"] + "\\\\\n")
-            tex_f.write("\\hline\n")
-    tex_f.write("\\hline\n")
-    tex_f.write(r'''
-\end{tabular}
-\end{center}
-\end{table}
-''')
-
 if args.vcf != None:
 
     tex_f.write(r'''
-    \section{Сравнение полученных результатов с эталонным}
-    ''')
+\section{Сравнение полученных результатов с эталонным}
+''')
 
     for aligner in var_callers.keys():
+        if (not len(var_callers[aligner])):
+            continue
         tex_f.write("\\subsection{" + aligner + r'''}
 \begin{table}[H]
 \caption{Сравнение общих результатов работы инструментов для поиска полиморфизмов с эталонным результатом}
@@ -502,37 +449,6 @@ if args.vcf != None:
                     + var_caller.shared_stats.SN[i]["number of others"] + " & "
                     + var_caller.shared_stats.SN[i]["number of multiallelic sites"] + " & " 
                     + var_caller.shared_stats.SN[i]["ts/tv"] + "\\\\\n")
-            tex_f.write("\\hline\n")
-        tex_f.write("\\hline\n")
-        tex_f.write(r'''
-\end{tabular}
-\end{center}
-\end{table}
-''')
-
-        tex_f.write(r'''
-\begin{table}[H]
-\caption{Сравнение общих результатов работы инструментов для поиска полиморфизмов с эталонным результатом}
-\begin{center}
-\begin{tabular}{|p{2cm}|p{2cm}|''' 
-            + (("p{2cm}") * 4) + "|}")
-
-        tex_f.write(r'''
-\hline\hline
-Название & Категория & Число SNP & Число transitions & Число transversions & Число вставок \\ [0.5ex]
-\hline\hline
-''')
-
-        for var_caller in var_callers[aligner]:
-            if (var_caller.shared_stats.empty()):
-                continue
-            tex_f.write("\\multirow{" + str(len(var_caller.shared_stats.SiS)) + "}{*}{" + var_caller.name + "}")
-            for i in range(len(var_caller.shared_stats.SiS)):
-                tex_f.write(" & " + var_caller.shared_stats.ID[i] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of SNPs"] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of transitions"] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of transversions"] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of indels"] + "\\\\\n")
             tex_f.write("\\hline\n")
         tex_f.write("\\hline\n")
         tex_f.write(r'''

@@ -47,8 +47,6 @@ def test_bam(bam, ref, out_dir, is_paired):
     log = open(out_dir + "/metrics_log", "a")
     subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CollectMultipleMetrics.jar I=\"" + bam 
             + "\" O=\"" + out_dir + "/metrics\" ASSUME_SORTED=true" 
-            + " PROGRAM=CollectAlignmentSummaryMetrics"
-            + " PROGRAM=CollectInsertSizeMetrics" 
             + " R=\"" + ref + "\" VALIDATION_STRINGENCY=SILENT",
             stdout=log, stderr=log, shell=True)
 
@@ -112,7 +110,7 @@ def mapping_single(mapper, reads, ref, out_dir, threads, hashsz, additional):
             + " \"" + out_dir + "\" " + str(threads) + " " + str(hashsz) + " " + additional,
             stderr=log, stdout=log, shell=True)
     
-def snp_calling(caller, bam, ref, out_dir, additional):
+def snp_calling(caller, bam, ref, out_dir, bed):
     if (os.path.exists(out_dir)):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
@@ -121,7 +119,7 @@ def snp_calling(caller, bam, ref, out_dir, additional):
     subprocess.call(caller 
             + " \"" + ref + "\""
             + " \"" + bam + "\" " + base_name_pattern.search(bam).group(1) 
-            + " \"" + out_dir + "\" " + additional,
+            + " \"" + out_dir + "\" " + (bed if bed else ""),
             stderr=log, stdout=log, shell=True)
 
 def get_mappers(technology, is_paired, mappers):
@@ -154,6 +152,7 @@ parser.add_argument("-v", action="store_true", dest="make_vcf", help="make snp c
 parser.add_argument("-m", "--mappers", action="store", dest="mappers", help="list of programms used for mapping")
 parser.add_argument("-s", "--snp", action="store", dest="snp_callers", help="list of programms used for snp calling")
 parser.add_argument("-c", "--storage", action="store", dest="storage", help="directory to store results for a long lime")
+parser.add_argument("--bed", action="store", dest="bed", help="region file in bed format")
 
 args = parser.parse_args()
 
@@ -200,8 +199,10 @@ if (not need_map):
         prog_name = caller[caller.rfind('/') + 1:-3]
         print "Variant calling with " + prog_name + " started"
         out_dir_snp = args.out + "/" + prog_name
-        snp_calling(caller, args.input, args.ref, out_dir_snp, "")
+        snp_calling(caller, args.input, args.ref, out_dir_snp, args.bed)
         print "Variant calling with " + prog_name + " done"
+        if (args.storage):
+            cache(out_dir_snp, args.storage)
     sys.exit(0)
 else:
     reads1 = args.input if args.input else args.reads1
@@ -234,7 +235,7 @@ else:
                 prog_name = caller[caller.rfind('/') + 1:-3]
                 print "Variant calling with " + prog_name + " started"
                 out_dir_snp = out_dir + "/" + prog_name
-                snp_calling(caller, bam, args.ref, out_dir_snp, "")
+                snp_calling(caller, bam, args.ref, out_dir_snp, args.bed)
                 print "Variant calling with " + prog_name + " done"
         else:
             print "    Failed"

@@ -1,15 +1,20 @@
 #!/bin/bash
-#usage ./mpileup.sh ref.fa aln.bam res_name out_dir additional
+#usage ./mpileup.sh ref.fa aln.bam res_name out_dir bed
 
 ref=$1
 bam=$2
 name=$3
 out=$4
-additional=$5
+bed=$5
 
 samtools faidx $ref
 date
 echo -e "0\tStart\t"`date +%s` >> $out/snp_time.log 
-samtools mpileup -uf $ref $bam | bcftools view -cvg - > $out/$name.vcf
+if [ -n $bed ]; then
+#    samtools mpileup -uf $ref -l $bed $bam | bcftools view -cvg - > $out/$name.vcf
+    samtools mpileup -uf $ref -l $bed $bam | bcftools view -cvg - > $out/$name.vcf
+else
+    samtools mpileup -uf $ref $bam | bcftools view -cvg - > $out/$name.vcf
+fi
 echo -e "1\tEnd\t"`date +%s` >> $out/snp_time.log 
 date

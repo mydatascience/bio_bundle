@@ -1,11 +1,11 @@
 #!/bin/bash
-#usage ./shore.sh ref.fa aln.bam res_name out_dir additional
+#usage ./shore.sh ref.fa aln.bam res_name out_dir bed
 
 ref=$1
 bam=$2
 name=$3
 out=$4
-additional=$5
+bed=$5
 
 dir=$(dirname $(readlink -e $0))
 
