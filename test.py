@@ -17,8 +17,8 @@ def cache(directory, storage):
         os.makedirs(storage)
     stat = os.statvfs(storage)
     free_space = stat.f_bsize * stat.f_bavail / 1024.0 / 1024 / 1024
-    if (free_space < 5):
-        sys.stderr("Storage has only " + str(free_space) + "Gb left. Not enought space to continue.")
+    if (free_space < 1):
+        sys.write.stderr("Storage has only " + str(free_space) + "Gb left. Not enought space to continue.")
         sys.exit(-1)
     else:
         sys.stderr.write("Moving all sorted bam files, it's indexes and vcf files to external storage, removing " + directory + "\n")

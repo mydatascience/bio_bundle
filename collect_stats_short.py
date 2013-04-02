@@ -4,6 +4,7 @@
 from argparse import ArgumentParser
 from datetime import datetime
 from datetime import timedelta
+import os.path
 import os
 import subprocess
 import shutil
@@ -181,7 +182,9 @@ def process_vcf(aligner_name, var_caller_name, res_dir, filename, golden, var_ca
     vcf_name = os.path.basename(filename)
     err_log = open(res_dir + "/err.log", "a")
     vcf_bgzip = open(filename + ".gz", "w")
-    subprocess.call("vcf-sort " + filename + " | bgzip -c", 
+    subprocess.call("vcf-sort " + filename 
+        + " | " + os.path.dirname(sys.argv[0]) + "/convert.py"
+        + " | bgzip -c", 
         stdout=vcf_bgzip, stderr=err_log, shell=True)
     vcf_bgzip.close()
     subprocess.call("tabix -p vcf " + filename + ".gz", stderr=err_log, shell=True)
@@ -298,6 +301,8 @@ r'''\documentclass[a4paper]{article}
 \usepackage[russian]{babel}
 \usepackage{multirow}
 \usepackage{float}
+\usepackage{geometry}
+\geometry{verbose,a4paper,tmargin=2cm,bmargin=2cm,lmargin=2.5cm,rmargin=1.5cm}
 \begin{document}
 \hyphenpenalty=9999
 ''')
