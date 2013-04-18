@@ -4,13 +4,14 @@
 from argparse import ArgumentParser
 from datetime import datetime
 from datetime import timedelta
+import os.path
 import os
 import subprocess
 import shutil
 import sys
 
-aln_metrics_defs = {'CATEGORY':'Категория', 'PF_READS_ALIGNED':'Число выровненных ридов', 'PF_HQ_ALIGNED_READS':'Число ридов, выровненных с высоким качеством', 'READS_ALIGNED_IN_PAIRS':'Число ридов, выровненных в парах', 'PF_MISMATCH_RATE':'Число ошибок заменой', 'PF_INDEL_RATE':'Число ошибок вставкой'}
-ins_size_metrics_defs = {'MEAN_INSERT_SIZE':'Среднее расстояние вставки', 'MIN_INSERT_SIZE':'Минимальное расстояние вставки', 'MAX_INSERT_SIZE':'Максимальное расстояние вставки', 'STANDARD_DEVIATION':'Среднеквадратичное отклонение расстояния вставки'}
+aln_metrics_defs = {'CATEGORY':'Category', 'PF_READS_ALIGNED':'Aligned reads', 'PF_HQ_ALIGNED_READS':'Reads aligned with high qual', 'READS_ALIGNED_IN_PAIRS':'Reads aligned in pairs', 'PF_MISMATCH_RATE':'Mismatch rate', 'PF_INDEL_RATE':'Indel rate'}
+ins_size_metrics_defs = {'MEAN_INSERT_SIZE':'Mean inset size', 'MIN_INSERT_SIZE':'Min insert size', 'MAX_INSERT_SIZE':'Max insert size', 'STANDARD_DEVIATION':'Standard deviation'}
 
 class Aligner:
 
@@ -51,6 +52,7 @@ class VCFStats:
         self.SN = []
         self.SiS = []
         self.AF = []
+        self.empty = True
 
     def __str__(self):
         return ("ID = " + str(self.ID) 
@@ -58,11 +60,12 @@ class VCFStats:
             + "\nSiS = " + str(self.SiS) 
             + "\nAF = " + str(self.AF))
 
-    def empty(self):
+    def is_empty(self):
         return (self.ID == [] 
             and self.SN == []
             and self.SiS == []
-            and self.AF == [])
+            and self.AF == []
+            and self.empty)
 
 class VarCaller:
 
@@ -78,10 +81,10 @@ class VarCaller:
             + "\ntime = " + str(self.time)
             + "\nsingle statistics: \n" + str(self.single_stats)
             + "\nshared statistics: \n" + str(self.shared_stats))
+
     def empty(self):
-        return (self.time == timedelta(0)
-            and self.single_stats.empty()
-            and self.shared_stats.empty())
+        return (self.single_stats.is_empty()
+            and self.shared_stats.is_empty())
 
 def parse_aln_summ_metrics(filename):
     f = open(filename)
@@ -166,12 +169,12 @@ def parse_vcf_stats(filename, vcf_name):
         if (len(vcf_stats.ID[i]) == 1):
 #            print vcf_stats.ID[i][0] + " " + vcf_name
             if (os.path.basename(vcf_stats.ID[i][0]) == os.path.basename(vcf_name + ".gz")):
-                vcf_stats.ID[i] = "результат"
+                vcf_stats.ID[i] = "FP"
             else:
-                vcf_stats.ID[i] = "эталон"
+                vcf_stats.ID[i] = "FN"
         else:
-            vcf_stats.ID[i] = "общий"
-    if (not vcf_stats.empty() and vcf_stats.SN[0] == {}):
+            vcf_stats.ID[i] = "TP"
+    if (not vcf_stats.is_empty() and vcf_stats.SN[0] == {}):
         return VCFStats()
     return vcf_stats
 
@@ -181,11 +184,15 @@ def process_vcf(aligner_name, var_caller_name, res_dir, filename, golden, var_ca
     vcf_name = os.path.basename(filename)
     err_log = open(res_dir + "/err.log", "a")
     vcf_bgzip = open(filename + ".gz", "w")
-    subprocess.call("bgzip -c " + filename, stdout=vcf_bgzip, stderr=err_log, shell=True)
+    subprocess.call("vcf-sort " + filename 
+        + " | " + os.path.dirname(sys.argv[0]) + "/convert.py"
+        + " | bgzip -c", 
+        stdout=vcf_bgzip, stderr=err_log, shell=True)
     vcf_bgzip.close()
     subprocess.call("tabix -p vcf " + filename + ".gz", stderr=err_log, shell=True)
     vcf_chk = open(res_dir + "/" + res_base + ".single.vchk", "w", 0)
-    if (subprocess.call("vcf check " + filename + ".gz | cat ", stdout=vcf_chk, stderr=err_log, shell=True) == 0):
+    if (subprocess.call("vcf-validator " + filename, stderr=err_log, shell=True) == 0):
+        subprocess.call("vcf check " + filename + ".gz", stdout=vcf_chk, stderr=err_log, shell=True)
         vcf_chk.close()
         subprocess.call("plot-vcfcheck -p " + res_dir + "/plots/" 
             + res_base + ".single" + " " 
@@ -211,9 +218,13 @@ args = parser.parse_args()
 
 print args
 
+golden_vcf = VarCaller("golden")
+
 if (args.vcf != None and not os.path.exists(args.vcf)):
     print "Golden file not exists"
     sys.exit(-1)
+else:
+    golden_vcf = process_vcf("golden", "golden", args.in_dir + "/test_stats", args.vcf[:-3], None, golden_vcf)
 
 aligners = [] # [Aligner1 Aligner2 ...]
 var_callers = {} # {aligner_name->[var_caller1 ...] ... }
@@ -279,6 +290,8 @@ for key in ins_size_metrics_defs.keys():
     if key not in def_metrics:
         del ins_size_metrics_defs[key]
 
+aligners = sorted(aligners, key=lambda aln: aln.name)
+
 #for aln in aligners:
 #    print str(aln)
 #
@@ -291,12 +304,14 @@ for key in ins_size_metrics_defs.keys():
 
 tex_f = open(args.in_dir + "/test_stats/stats.tex", "w")
 tex_f.write(
-r'''\documentclass[a4paper]{article}
+r'''\documentclass[a4paper]{report}
 \usepackage [T2A]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[russian]{babel}
+\usepackage[english]{babel}
 \usepackage{multirow}
 \usepackage{float}
+\usepackage{geometry}
+\geometry{verbose,a4paper,tmargin=2cm,bmargin=2cm,lmargin=2.5cm,rmargin=1.5cm}
 \begin{document}
 \hyphenpenalty=9999
 ''')
@@ -305,17 +320,16 @@ r'''\documentclass[a4paper]{article}
 
 if (len(aligners)):
     tex_f.write(r'''
-\section{Результаты работы инструментов для выравнивания}
+\section{Aligners results}
 ''')
 
     tex_f.write(r'''
 \begin{table}[H]
-\caption{Сравнительная таблица продолжительности работы инструментов для выравнивания}
 \begin{center}
 \begin{tabular}{|p{2cm}|p{3cm}p{3cm}p{3cm}p{3cm}|}
 \hline\hline
 ''')
-    tex_f.write(r'''Название & Время построения индекса & Время выравнивания & Время построения сортированного bam файла & Общее время \\ [0.5ex]
+    tex_f.write(r'''Name & Building index time & Alignment time & Bam making time & Summary time\\ [0.5ex]
 \hline\hline
 ''')
 
@@ -328,14 +342,13 @@ if (len(aligners)):
 
     tex_f.write(r'''
 \begin{table}[H]
-\caption{Сравнительная таблица результатов работы инструментов для выравнивания}
 \begin{center}
 \begin{tabular}{|p{2cm}|''' 
         + (("p{" + str(12.0 / (len(aln_metrics_defs) + len(ins_size_metrics_defs))) 
         + "cm}") * (len(aln_metrics_defs) + len(ins_size_metrics_defs)))
         + r'''|}
 \hline\hline
-Название & ''')
+Name & ''')
 
     for metric_name in aln_metrics_defs.values():
         tex_f.write(metric_name)
@@ -373,98 +386,42 @@ if (len(aligners)):
 \end{table}
 ''')
 
-# Статистика variant callers
+# variant callers stats
 
 tex_f.write(r'''
-\section{Результаты работы инструментов для поиска полиморфизмов}
+\section{Variant callers results}
 ''')
 
 print var_callers.keys()
-for aligner in var_callers.keys():
+for aligner in sorted(var_callers.keys()):
+    if (not len(var_callers[aligner])):
+        continue
     tex_f.write("\\subsection{" + aligner + r'''}
 \begin{table}[H]
-\caption{Общая таблица результатов работы инструментов для поиска полиморфизмов}
 \begin{center}
 \begin{tabular}{|p{1.5cm}|''' 
         + (("p{1.5cm}") * 6) + "|p{1.5cm}|}")
 
     tex_f.write(r'''
 \hline\hline
-Название & Число SNP & Число MNP & Число вставок & Число других полиморфизмов & Число multiallelic sites & ts/tv & Время работы \\ [0.5ex]
+Name & SNP & MNP & Indel & Other & Multiallelic sites & Ts/tv & Time \\ [0.5ex]
 \hline\hline
 ''')
 
-    for var_caller in var_callers[aligner]:
-        if (var_caller.single_stats.SN != [] and var_caller.single_stats.SN[0] != {}):
+    for var_caller in sorted(var_callers[aligner], key = lambda vc: vc.name):
+        if (not var_caller.single_stats.is_empty()):
             tex_f.write(var_caller.name + " & " 
-                + var_caller.single_stats.SN[0]["number of SNPs"] + " & "
+                + ((var_caller.single_stats.SN[0]["number of SNPs"] + " & "
                 + var_caller.single_stats.SN[0]["number of MNPs"] + " & "
                 + var_caller.single_stats.SN[0]["number of indels"] + " & "
                 + var_caller.single_stats.SN[0]["number of others"] + " & "
                 + var_caller.single_stats.SN[0]["number of multiallelic sites"] + " & " 
-                + var_caller.single_stats.SN[0]["ts/tv"] + " & "
+                + var_caller.single_stats.SN[0]["ts/tv"]) 
+                if (len(var_caller.single_stats.SN) != 0) 
+                else "0 & 0 & 0 & 0 & 0 & 0")
+                + " & "
                 + str(var_caller.time)  + "\\\\\n"
                 + "\\hline\n")
-    tex_f.write("\\hline\n")
-    tex_f.write(r'''
-\end{tabular}
-\end{center}
-\end{table}
-''')
-
-    tex_f.write(r'''
-\begin{table}[H]
-\caption{Singleton статистики результатов работы инструментов для поиска полиморфизмов}
-\begin{center}
-\begin{tabular}{|p{2cm}|''' 
-        + (("p{2cm}") * 4) + "|}")
-
-    tex_f.write(r'''
-\hline\hline
-Название & Число SNP & Число transitions & Число transversions & Число вставок \\ [0.5ex]
-\hline\hline
-''')
-
-    for var_caller in var_callers[aligner]:
-        if (var_caller.single_stats.SiS != [] and var_caller.single_stats.SiS[0] != {}):
-            tex_f.write(var_caller.name + " & " 
-                + var_caller.single_stats.SiS[0]["number of SNPs"] + " & "
-                + var_caller.single_stats.SiS[0]["number of transitions"] + " & "
-                + var_caller.single_stats.SiS[0]["number of transversions"] + " & "
-                + var_caller.single_stats.SiS[0]["number of indels"] + "\\\\\n"
-                + "\\hline\n")
-    tex_f.write("\\hline\n")
-    tex_f.write(r'''
-\end{tabular}
-\end{center}
-\end{table}
-''')
-
-    tex_f.write(r'''
-\begin{table}[H]
-\caption{Статистики по не референсной аллели результатов работы инструментов для поиска полиморфизмов}
-\begin{center}
-\begin{tabular}{|p{2cm}|''' 
-        + (("p{2cm}") * 5) + "|}")
-
-    tex_f.write(r'''
-\hline\hline
-Название & Частота встречаемости аллели & Число SNP & Число transitions & Число transversions & Число вставок \\ [0.5ex]
-\hline\hline
-''')
-
-    for var_caller in var_callers[aligner]:
-#        print var_caller
-        if (var_caller.single_stats.AF != [] and var_caller.single_stats.AF[0] != []):
-            tex_f.write("\\multirow{" + str(len(var_caller.single_stats.AF[0])) + "}{*}{" + var_caller.name + "}") 
-            for i in range(len(var_caller.single_stats.AF[0])):
-                tex_f.write(" & "  
-                + var_caller.single_stats.AF[0][i]["allele frequency"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of SNPs"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of transitions"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of transversions"] + " & "
-                + var_caller.single_stats.AF[0][i]["number of indels"] + "\\\\\n")
-            tex_f.write("\\hline\n")
     tex_f.write("\\hline\n")
     tex_f.write(r'''
 \end{tabular}
@@ -475,66 +432,57 @@ for aligner in var_callers.keys():
 if args.vcf != None:
 
     tex_f.write(r'''
-    \section{Сравнение полученных результатов с эталонным}
-    ''')
+\section{Variant caller statistics}
+''')
 
-    for aligner in var_callers.keys():
+    for aligner in sorted(var_callers.keys()):
+        if (not len(var_callers[aligner])):
+            continue
         tex_f.write("\\subsection{" + aligner + r'''}
 \begin{table}[H]
-\caption{Сравнение общих результатов работы инструментов для поиска полиморфизмов с эталонным результатом}
 \begin{center}
-\begin{tabular}{|p{1.5cm}|p{1.5cm}|''' 
-            + (("p{1.5cm}") * 6) + "|}")
+\begin{tabular}{|p{1.2cm}|p{1.2cm}|''' 
+            + (("p{2.2cm}") * 5) + "p{0.8cm}" + "|}")
 
         tex_f.write(r'''
 \hline\hline
-Название & Категория & Число SNP & Число MNP & Число вставок & Число других полиморфизмов & Число multiallelic sites & ts/tv \\ [0.5ex]
+Name & Category & SNP & MNP & Indel & Other& Multiallelic sites & Ts/tv \\ [0.5ex]
 \hline\hline
 ''')
 
-        for var_caller in var_callers[aligner]:
-            if var_caller.shared_stats.empty():
+        for var_caller in sorted(var_callers[aligner], key = lambda vc: vc.name):
+            if (var_caller.shared_stats.is_empty() 
+                    or len(var_caller.shared_stats.SN) < 3):
                 continue
             tex_f.write("\\multirow{" + str(len(var_caller.shared_stats.SN)) + "}{*}{" + var_caller.name + "}")
-            for i in range(len(var_caller.shared_stats.SN)):
+            for i in [2, 0, 1]:
                 tex_f.write(" & " + var_caller.shared_stats.ID[i] + " & "
-                    + var_caller.shared_stats.SN[i]["number of SNPs"] + " & "
-                    + var_caller.shared_stats.SN[i]["number of MNPs"] + " & "
-                    + var_caller.shared_stats.SN[i]["number of indels"] + " & "
-                    + var_caller.shared_stats.SN[i]["number of others"] + " & "
-                    + var_caller.shared_stats.SN[i]["number of multiallelic sites"] + " & " 
+                    + var_caller.shared_stats.SN[i]["number of SNPs"] 
+                    + ("" if golden_vcf.single_stats.SN[0]["number of SNPs"] == "0" 
+                        else ("(" + str(round(float(var_caller.shared_stats.SN[i]["number of SNPs"])
+                        / float(golden_vcf.single_stats.SN[0]["number of SNPs"]) * 100, 2)) 
+                    + "\%)")) + " & "
+                    + var_caller.shared_stats.SN[i]["number of MNPs"] 
+                    + ("" if golden_vcf.single_stats.SN[0]["number of MNPs"] == "0" 
+                        else ("(" + str(round(float(var_caller.shared_stats.SN[i]["number of MNPs"])
+                        / float(golden_vcf.single_stats.SN[0]["number of MNPs"]) * 100, 2)) 
+                    + "\%)")) + " & "
+                    + var_caller.shared_stats.SN[i]["number of indels"] 
+                    + ("" if golden_vcf.single_stats.SN[0]["number of indels"] == "0"
+                        else ("(" + str(round(float(var_caller.shared_stats.SN[i]["number of indels"])
+                        / float(golden_vcf.single_stats.SN[0]["number of indels"]) * 100, 2))
+                    + "\%)")) + " & "
+                    + var_caller.shared_stats.SN[i]["number of others"] 
+                    + ("" if golden_vcf.single_stats.SN[0]["number of others"] == "0"
+                        else ("(" + str(round(float(var_caller.shared_stats.SN[i]["number of others"])
+                        / float(golden_vcf.single_stats.SN[0]["number of others"]) * 100, 2))
+                    + "\%)")) + " & "
+                    + var_caller.shared_stats.SN[i]["number of multiallelic sites"] 
+                    + ("" if golden_vcf.single_stats.SN[0]["number of multiallelic sites"] == "0"
+                        else ("(" + str(round(float(var_caller.shared_stats.SN[i]["number of multiallelic sites"])
+                        / float(golden_vcf.single_stats.SN[0]["number of multiallelic sites"]) * 100, 2))
+                    + "\%)")) + " & "
                     + var_caller.shared_stats.SN[i]["ts/tv"] + "\\\\\n")
-            tex_f.write("\\hline\n")
-        tex_f.write("\\hline\n")
-        tex_f.write(r'''
-\end{tabular}
-\end{center}
-\end{table}
-''')
-
-        tex_f.write(r'''
-\begin{table}[H]
-\caption{Сравнение общих результатов работы инструментов для поиска полиморфизмов с эталонным результатом}
-\begin{center}
-\begin{tabular}{|p{2cm}|p{2cm}|''' 
-            + (("p{2cm}") * 4) + "|}")
-
-        tex_f.write(r'''
-\hline\hline
-Название & Категория & Число SNP & Число transitions & Число transversions & Число вставок \\ [0.5ex]
-\hline\hline
-''')
-
-        for var_caller in var_callers[aligner]:
-            if (var_caller.shared_stats.empty()):
-                continue
-            tex_f.write("\\multirow{" + str(len(var_caller.shared_stats.SiS)) + "}{*}{" + var_caller.name + "}")
-            for i in range(len(var_caller.shared_stats.SiS)):
-                tex_f.write(" & " + var_caller.shared_stats.ID[i] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of SNPs"] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of transitions"] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of transversions"] + " & "
-                    + var_caller.shared_stats.SiS[i]["number of indels"] + "\\\\\n")
             tex_f.write("\\hline\n")
         tex_f.write("\\hline\n")
         tex_f.write(r'''
