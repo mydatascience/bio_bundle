@@ -74,7 +74,7 @@ def make_bam(directory, ref):
     time_log.write("3\tSorted bam file done\t" + str(int(time.mktime(datetime.now().timetuple()))))
     return directory + '/' + aln_base + '.bam'
 
-def mapping_paired(mapper, reads1, reads2, ref, out_dir, threads, hashsz, additional):
+def mapping_paired(mapper, reads1, reads2, ref, out_dir, threads, hashsz):
     if (os.path.exists(out_dir)):
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
@@ -84,7 +84,7 @@ def mapping_paired(mapper, reads1, reads2, ref, out_dir, threads, hashsz, additi
             + " \"" + ref + "\" " + os.path.splitext(os.path.basename(ref))[0]
             + " \"" + reads1 + "\" " + os.path.splitext(os.path.basename(reads1))[0] 
             + " \"" + reads2 + "\" " + os.path.splitext(os.path.basename(reads2))[0] 
-            + " \"" + out_dir + "\" " + str(threads) + " " + str(hashsz) + " " + additional,
+            + " \"" + out_dir + "\" " + str(threads) + " " + str(hashsz),
             stderr=log, stdout=log, shell=True)
 
 
@@ -111,6 +111,11 @@ def snp_calling(caller, bam, ref, out_dir, bed):
             + " \"" + bam + "\" " + os.path.splitext(os.path.basename(bam))[0]
             + " \"" + out_dir + "\" " + (bed if bed else ""),
             stderr=log, stdout=log, shell=True)
+    log.close()
+
+def make_seq_dict(ref):
+    subprocess.call("java -jar $TOOLS_PATH/picard-tools-1.84/CreateSequenceDictionary.jar R=\"" + ref
+            + "\" O=\"" + os.path.splitext(ref)[0] + ".dict\"", shell = True)
 
 def get_mappers(technology, is_paired, mappers, dirname):
     directory = dirname + "/mapping/" + technology + "/" + ("paired" if is_paired else "single") + "/"
@@ -128,11 +133,27 @@ def get_snp_callers(snp_callers, dirname):
         snp_callers[i] = directory + snp_callers[i] + (".sh" if (snp_callers[i][-3:] != ".sh") else "")
     return snp_callers
 
+def filter_vcf(vcf):
+    basename = os.path.splitext(vcf)[0]
+    log = open(os.path.dirname(vcf) + "/snp.log", "a")
+    subprocess.call("vcftools --minQ 30 --non-ref-af 0.2 --non-ref-ac 1 --hwe 0.05 "
+            + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf, 
+            stdout=log, stderr=log, shell=True)
+    if not os.path.exists(basename + '.recode.vcf'):
+        subprocess.call("vcftools --non-ref-af 0.2 --non-ref-ac 1 --hwe 0.05 "
+                + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf, 
+                stdout=log, stderr=log, shell=True)
+    if os.path.exists(basename + '.recode.vcf'):
+        os.rename(basename + '.vcf', basename + '.raw.vcf')
+        os.rename(basename + '.recode.vcf', basename + '.vcf')
+
 def make_snp_calling(caller, ref, bam, bed, tmp_dir):
     prog_name = os.path.splitext(os.path.basename(caller))[0]
     print "Variant calling with " + prog_name + " started"
     out_dir_snp = tmp_dir + "/" + prog_name
     snp_calling(caller, bam, ref, out_dir_snp, bed)
+    print "Filter vcf file"
+    filter_vcf(out_dir_snp + '/' + os.path.splitext(os.path.basename(bam))[0] + '.vcf')
     print "Variant calling with " + prog_name + " done"
     return out_dir_snp
 

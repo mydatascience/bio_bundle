@@ -19,10 +19,10 @@ fi
 if [ -s $out/$name.bcf ]; then
     echo "SNP search started"
     date
-    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2indel $out/$name.bcf --min-coverage 10 --min_avg_qual 20 --min-var-freq 0.2 --strand-filter --output-vcf > $out/$name.indel.vcf
+    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2indel $out/$name.bcf --min-coverage 1 --min_avg_qual 0 --min-var-freq 0.05 --output-vcf > $out/$name.indel.vcf
     echo "indel search started"
     date
-    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2snp $out/$name.bcf --min-coverage 10 --min_avg_qual 20 --min-var-freq 0.2 --strand-filter --output-vcf > $out/$name.snp.vcf
+    java -jar $TOOLS_PATH/VarScan.v2.3.4.jar mpileup2snp $out/$name.bcf --min-coverage 1 --min_avg_qual 0 --min-var-freq 0.05 --output-vcf > $out/$name.snp.vcf
     echo "indel search done"
     date
     echo -e "1\tEnd\t"`date +%s` >> $out/snp_time.log 

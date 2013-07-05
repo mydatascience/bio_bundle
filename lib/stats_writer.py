@@ -113,10 +113,16 @@ def aligners_stats_plots(aligners, in_dir):
                     plot.bar(i * width, int(metric['PF_HQ_ALIGNED_READS']), 
                     width - 0.02, color=colors[i%len(colors)]), 
                     aln.name])
-                tmp_data['aln'].append(aln.name)
-                tmp_data['mismatch'].append(float(metric['PF_MISMATCH_RATE']))
-                tmp_data['indel'].append(float(metric['PF_INDEL_RATE']))
-                i += 1
+                if metric == aln.metrics[-1]:
+                    tmp_data['aln'].append(aln.name)
+                    tmp_data['mismatch'].append(float(metric['PF_MISMATCH_RATE']))
+                    tmp_data['indel'].append(float(metric['PF_INDEL_RATE']))
+                    i += 1
+        else:
+            tmp_data['aln'].append(aln.name)
+            tmp_data['mismatch'].append(0)
+            tmp_data['indel'].append(0)
+            i += 1
 
     plot.set_ylabel(u"Number of aligned reads")
     plot.set_title(u"Aligned reads")
@@ -130,6 +136,7 @@ def aligners_stats_plots(aligners, in_dir):
     plot = fig.add_subplot(111)
 
     rects = []
+    print "height is " + str(tmp_data['mismatch'])
     rects.append(plot.bar(ind, tmp_data['mismatch'], width - 0.02, color=colors[0]))
     rects.append(plot.bar(ind + width, tmp_data['indel'], width - 0.02, color=colors[1]))
 

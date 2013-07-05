@@ -11,9 +11,9 @@ bed=$5
 date
 echo -e "0\tStart\t"`date +%s` >> $out/snp_time.log 
 if [ -n "$bed" ]; then
-    samtools mpileup -q 30 -Q 20 -uf $ref -l $bed $bam | bcftools view -cvg - > $out/$name.vcf
+    samtools mpileup -q 0 -Q 0 -d 1000 -uf $ref -l $bed $bam | bcftools view -cvg - > $out/$name.vcf
 else
-    samtools mpileup -q 30 -Q 20 -uf $ref $bam | bcftools view -cvg - > $out/$name.vcf
+    samtools mpileup -q 0 -Q 0 -d 1000 -uf $ref $bam | bcftools view -cvg - > $out/$name.vcf
 fi
 echo -e "1\tEnd\t"`date +%s` >> $out/snp_time.log 
 date

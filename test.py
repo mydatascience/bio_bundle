@@ -55,6 +55,7 @@ if __name__ == "__main__":
         mappers = testlib.get_mappers(args.technology, is_paired, mappers, dirname)
 
     if (need_snp):
+        testlib.make_seq_dict(args.ref)
         if (args.snp_callers):
             snp_callers = args.snp_callers.split(" ")
         snp_callers = testlib.get_snp_callers(snp_callers, dirname)
