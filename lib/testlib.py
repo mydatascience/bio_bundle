@@ -143,8 +143,8 @@ def filter_vcf(vcf):
         subprocess.call("vcftools --non-ref-af 0.2 --non-ref-ac 1 --hwe 0.05 "
                 + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf, 
                 stdout=log, stderr=log, shell=True)
+    os.rename(basename + '.vcf', basename + '.raw.vcf')
     if os.path.exists(basename + '.recode.vcf'):
-        os.rename(basename + '.vcf', basename + '.raw.vcf')
         os.rename(basename + '.recode.vcf', basename + '.vcf')
 
 def make_snp_calling(caller, ref, bam, bed, tmp_dir):
@@ -152,8 +152,10 @@ def make_snp_calling(caller, ref, bam, bed, tmp_dir):
     print "Variant calling with " + prog_name + " started"
     out_dir_snp = tmp_dir + "/" + prog_name
     snp_calling(caller, bam, ref, out_dir_snp, bed)
-    print "Filter vcf file"
-    filter_vcf(out_dir_snp + '/' + os.path.splitext(os.path.basename(bam))[0] + '.vcf')
+    vcf_name = out_dir_snp + '/' + os.path.splitext(os.path.basename(bam))[0] + '.vcf' 
+    if os.path.exists(vcf_name):
+        print "Filter vcf file"
+        filter_vcf(vcf_name)
     print "Variant calling with " + prog_name + " done"
     return out_dir_snp
 
