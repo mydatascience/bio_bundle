@@ -34,6 +34,7 @@ def begin_document(tex_f):
 \usepackage[english]{babel}
 \usepackage{multirow}
 \usepackage{float}
+\usepackage{pdflscape}
 \usepackage{geometry}
 \geometry{verbose,a4paper,tmargin=2cm,bmargin=2cm,lmargin=2.5cm,rmargin=1.5cm}
 \begin{document}
@@ -49,7 +50,7 @@ def new_section(tex_f, name):
 ''')
 
 def add_picture(tex_f, path, scale):
-    tex_f.write(r'''\begin{figure}[H]
+    tex_f.write(r'''\begin{figure}[h]
     \begin{center}
     \includegraphics[scale=''' + str(scale) + "]{" + path + r'''}
     \end{center}
@@ -76,7 +77,7 @@ def aligners_time_plot(aligners, in_dir):
 
 def output_aligners_time(aligners, tex_f, in_dir):
     tex_f.write(r'''
-    \begin{table}[H]
+    \begin{table}[h]
     \begin{center}
     \begin{tabular}{|p{2cm}|p{3cm}p{3cm}p{3cm}p{3cm}|}
     \hline\hline
@@ -107,13 +108,13 @@ def aligners_stats_plots(aligners, in_dir):
     for aln in aligners:
         if (aln.metrics != []):
             for metric in aln.metrics:
-                rects.append([
-                    plot.bar(i * width, 
-                    int(metric['PF_READS_ALIGNED']), width-0.02, color="#E0E0E0"),
-                    plot.bar(i * width, int(metric['PF_HQ_ALIGNED_READS']), 
-                    width - 0.02, color=colors[i%len(colors)]), 
-                    aln.name])
                 if metric == aln.metrics[-1]:
+                    rects.append([
+                        plot.bar(i * width, 
+                        int(metric['PF_READS_ALIGNED']), width-0.02, color="#E0E0E0"),
+                        plot.bar(i * width, int(metric['PF_HQ_ALIGNED_READS']), 
+                        width - 0.02, color=colors[i%len(colors)]), 
+                        aln.name])
                     tmp_data['aln'].append(aln.name)
                     tmp_data['mismatch'].append(float(metric['PF_MISMATCH_RATE']))
                     tmp_data['indel'].append(float(metric['PF_INDEL_RATE']))
@@ -152,10 +153,11 @@ def aligners_stats_plots(aligners, in_dir):
 
 def output_aligners_stats(aligners, tex_f, in_dir):
     tex_f.write(r'''
-    \begin{table}[H]
+    \begin{landscape}
+    \begin{table}[h]
     \begin{center}
-    \begin{tabular}{|p{2cm}|''' 
-        + (("p{" + str(12.0 / (len(aln_metrics_defs) + len(ins_size_metrics_defs))) 
+    \begin{tabular}{|p{1.5cm}|''' 
+        + (("p{" + str(15.0 / (len(aln_metrics_defs) + len(ins_size_metrics_defs))) 
         + "cm}") * (len(aln_metrics_defs) + len(ins_size_metrics_defs)))
         + r'''|}
     \hline\hline
@@ -181,20 +183,25 @@ def output_aligners_stats(aligners, tex_f, in_dir):
             for metric in aln.metrics:
                 for metric_name in aln_metrics_defs.keys():
                     if (metric_name in metric.keys()):
-                        tex_f.write(" & \\verb|" + metric[metric_name] + "|")
+                        if metric_name == 'CATEGORY':
+                            tex_f.write(" & \\verb|" + metric[metric_name][:6] + "|")
+                        else:
+                            tex_f.write(" & \\verb|" + str(round(float(metric[metric_name]), 4)) + "|")
                     else:
                         tex_f.write(" & 0")
                 if (metric['CATEGORY'] == "PAIR"):
                     for metric_name in ins_size_metrics_defs.keys():
-                        tex_f.write(" & " + aln.ins_metrics[metric_name])
+                        tex_f.write(" & " + str(round(float(aln.ins_metrics[metric_name]), 4)))
                 else:
                     tex_f.write(" & " * len(ins_size_metrics_defs.keys()))
-                tex_f.write(" \\\\\n\\hline\n")
+                tex_f.write(" \\\\\n")
+            tex_f.write("\\hline\n")
 
     tex_f.write("\\hline\n")
     tex_f.write(r'''\end{tabular}
     \end{center}
     \end{table}
+    \end{landscape}
     ''')
 
     aligners_stats_plots(aligners, in_dir)
@@ -204,7 +211,7 @@ def output_aligners_stats(aligners, tex_f, in_dir):
 def vc_single_plot(fig, plot, ylabel, title, var_caller_names, ind, aln_names, rects, i, saveto):
     plot.set_ylabel(ylabel)
     plot.set_title(title)
-    plot.set_xticks(ind + width * len(var_caller_names))
+    plot.set_xticks(ind + width * len(var_caller_names) / 2)
     plot.set_xticklabels(aln_names)
     box = plot.get_position()
     plot.set_position([box.x0, box.y0, box.width * 0.8, box.height])
@@ -227,7 +234,8 @@ def vc_single_plots(var_callers, in_dir, var_caller_names):
         tmp_data['indel'][vc] = [0] * len(var_callers.keys())
         tmp_data['time'][vc] = [0] * len(var_callers.keys())
     i = 0
-    ind = np.arange(len(var_callers.keys()))
+    ind = np.arange(0, len(var_callers.keys()) * width * len(var_caller_names), len(var_caller_names) * width)
+    print ind
 
     for aligner in sorted(var_callers.keys()):
         if (not len(var_callers[aligner])):
@@ -298,7 +306,7 @@ def vc_single_stats(var_callers, tex_f, in_dir, var_caller_names):
 def vc_shared_plot(fig, plot, ylabel, title, var_caller_names, ind, aln_names, rects, i, saveto):
     plot.set_ylabel(ylabel)
     plot.set_title(title)
-    plot.set_xticks(ind + (width*len(var_caller_names)))
+    plot.set_xticks(ind + (width*len(var_caller_names) / 2))
     plot.set_xticklabels(aln_names)
     box = plot.get_position()
     plot.set_position([box.x0, box.y0, box.width * 0.8, box.height])
@@ -319,7 +327,7 @@ def vc_shared_plots(var_callers, in_dir, var_caller_names):
         tmp_data['snp'][vc] = [[0] * len(var_callers.keys()), [0] * len(var_callers.keys())]
         tmp_data['indel'][vc] = [[0] * len(var_callers.keys()), [0] * len(var_callers.keys())]
     i = 0
-    ind = np.arange(len(var_callers.keys()))
+    ind = np.arange(0, len(var_callers.keys()) * width * len(var_caller_names), len(var_caller_names) * width)
 
     for aligner in sorted(var_callers.keys()):
         if (not len(var_callers[aligner])):
