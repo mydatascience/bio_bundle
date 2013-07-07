@@ -13,7 +13,7 @@ additional=$8
 echo "build index started"
 date
 echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
-python $StampyPATH/stampy.py -G $out/$ref_base $ref && \
+python $StampyPATH/stampy.py --noparseNCBI -G $out/$ref_base $ref && \
 echo "building hash started" && \
 date && \
 python $StampyPATH/stampy.py -g $out/$ref_base -H $out/$ref_base && \
