@@ -3,5 +3,5 @@
 from lib import testlib
 import sys
 
-testlib.filter_vcf(sys.argv[1])
+testlib.filter_vcf(sys.argv[2], sys.argv[1])
 

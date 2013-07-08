@@ -38,6 +38,11 @@ def test_bam(bam, ref, out_dir, is_paired):
             + " R=\"" + ref + "\" VALIDATION_STRINGENCY=SILENT",
             stdout=log, stderr=log, shell=True)
 
+def create_repeats_reg(ref):
+    reg = open(ref + '.rep.bed', 'w')
+    subprocess.call("$TOOLS_PATH/RepeatMasker/RepeatMasker -lib $TOOLS_PATH/RepeatMasker/Libraries/RepBase17.07.fa -pa 4 " + ref, shell=True)
+    subprocess.call('$TOOLS_PATH/RepeatMasker/Libraries/rmOutToBED.pl ' + ref + '.out 500', stdout = reg, shell=True)
+
 def make_bam(directory, ref):
     files = os.listdir(directory)
     aln = ""
@@ -133,15 +138,21 @@ def get_snp_callers(snp_callers, dirname):
         snp_callers[i] = directory + snp_callers[i] + (".sh" if (snp_callers[i][-3:] != ".sh") else "")
     return snp_callers
 
-def filter_vcf(vcf):
+def filter_vcf(vcf, ref):
     basename = os.path.splitext(vcf)[0]
-    log = open(os.path.dirname(vcf) + "/snp.log", "a")
+    dirname = os.path.dirname(vcf) if os.path.dirname(vcf) else '.'
+    log = open(dirname + "/snp.log", "a")
+    if not os.path.exists(ref + '.rep.bed'):
+        create_repeats_reg(ref)
+
     subprocess.call("vcftools --minQ 30 --non-ref-af 0.2 --non-ref-ac 1 --hwe 0.05 "
-            + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf, 
+            + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf
+            + " --exclude-bed " + ref + '.rep.bed', 
             stdout=log, stderr=log, shell=True)
     if not os.path.exists(basename + '.recode.vcf'):
         subprocess.call("vcftools --non-ref-af 0.2 --non-ref-ac 1 --hwe 0.05 "
-                + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf, 
+                + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf 
+                + " --exclude-bed " + ref + '.rep.bed', 
                 stdout=log, stderr=log, shell=True)
     os.rename(basename + '.vcf', basename + '.raw.vcf')
     if os.path.exists(basename + '.recode.vcf'):
@@ -155,7 +166,7 @@ def make_snp_calling(caller, ref, bam, bed, tmp_dir):
     vcf_name = out_dir_snp + '/' + os.path.splitext(os.path.basename(bam))[0] + '.vcf' 
     if os.path.exists(vcf_name):
         print "Filter vcf file"
-        filter_vcf(vcf_name)
+        filter_vcf(vcf_name, ref)
     print "Variant calling with " + prog_name + " done"
     return out_dir_snp
 
