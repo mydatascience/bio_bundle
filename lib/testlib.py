@@ -41,7 +41,7 @@ def test_bam(bam, ref, out_dir, is_paired):
 def create_repeats_reg(ref):
     reg = open(ref + '.rep.bed', 'w')
     subprocess.call("$TOOLS_PATH/RepeatMasker/RepeatMasker -lib $TOOLS_PATH/RepeatMasker/Libraries/RepBase17.07.fa -pa 4 " + ref, shell=True)
-    subprocess.call('$TOOLS_PATH/RepeatMasker/Libraries/rmOutToBED.pl ' + ref + '.out 500', stdout = reg, shell=True)
+    subprocess.call('$TOOLS_PATH/RepeatMasker/Libraries/rmOutToBED.pl ' + ref + '.out 0', stdout = reg, shell=True)
 
 def make_bam(directory, ref):
     files = os.listdir(directory)
@@ -61,7 +61,7 @@ def make_bam(directory, ref):
 
     aln_base = os.path.splitext(aln)[0]
     if (aln.endswith(".sam")):
-        subprocess.call("samtools view -bt \"" + ref 
+        subprocess.call("samtools view -bt \"" + ref + '.fai'
                 + "\" \"" + directory + "/" + aln + "\" "
                 + " > \"" + directory + "/" + aln_base + ".bam\"" ,
                 stderr=log, stdout=log, shell=True)
@@ -130,8 +130,8 @@ def get_mappers(technology, is_paired, mappers, dirname):
         mappers[i] = directory + mappers[i] + (".sh" if (mappers[i][-3:] != ".sh") else "")
     return mappers
 
-def get_snp_callers(snp_callers, dirname):
-    directory = dirname + "/snp/"
+def get_snp_callers(snp_callers, dirname, is_mult_bam):
+    directory = dirname + "/snp/" + ('multiple/' if is_mult_bam else 'single/')
     if (not len(snp_callers)):
         snp_callers = os.listdir(directory)
     for i in range(len(snp_callers)):
@@ -145,13 +145,13 @@ def filter_vcf(vcf, ref):
     if not os.path.exists(ref + '.rep.bed'):
         create_repeats_reg(ref)
 
-    subprocess.call("vcftools --minQ 30 --non-ref-af 0.2 --non-ref-ac 1 --hwe 0.05 "
-            + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf
+    subprocess.call("vcftools --minQ 30 --hwe 0.05 "
+            + " --non-ref-ac 2 --minDP 5 --recode --recode-INFO-all --out " + basename + " --vcf " + vcf
             + " --exclude-bed " + ref + '.rep.bed', 
             stdout=log, stderr=log, shell=True)
     if not os.path.exists(basename + '.recode.vcf'):
-        subprocess.call("vcftools --non-ref-af 0.2 --non-ref-ac 1 --hwe 0.05 "
-                + "--minGQ 30 --minDP 5 --recode --recode --out " + basename + " --vcf " + vcf 
+        subprocess.call("vcftools --hwe 0.05 "
+                + " --non-ref-ac 2 --minDP 5 --recode --recode-INFO-all --out " + basename + " --vcf " + vcf 
                 + " --exclude-bed " + ref + '.rep.bed', 
                 stdout=log, stderr=log, shell=True)
     os.rename(basename + '.vcf', basename + '.raw.vcf')

@@ -23,12 +23,13 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--mappers", action="store", dest="mappers", help="list of programms used for mapping")
     parser.add_argument("-s", "--snp", action="store", dest="snp_callers", help="list of programms used for snp calling")
     parser.add_argument("-o", "--out", action="store", required=True, dest="storage", help="directory to store results")
+    parser.add_argument("-l", action="store", required=False, dest="bam_list", help="file with list of bam files, one bam per line")
     parser.add_argument("--bed", action="store", dest="bed", help="region file in bed format")
 
     args = parser.parse_args()
     tmp_dir = args.storage + '/tmp'
 
-    if (not args.input and not args.reads1):
+    if (not args.input and not args.reads1 and not args.bam_list):
         sys.stderr.write("Please, specify reads or alignment file\n")
         sys.exit(-1)
 
@@ -38,7 +39,7 @@ if __name__ == "__main__":
         dirname = "."
     (need_map, need_snp) = (False, False)
 
-    if (args.input and args.input.endswith('.bam')):
+    if (args.input and args.input.endswith('.bam')) or args.bam_list:
         need_snp = True
     else:
         need_map = True
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         testlib.make_seq_dict(args.ref)
         if (args.snp_callers):
             snp_callers = args.snp_callers.split(" ")
-        snp_callers = testlib.get_snp_callers(snp_callers, dirname)
+        snp_callers = testlib.get_snp_callers(snp_callers, dirname, True if args.bam_list else False)
 
     if not os.path.exists(args.storage):
         os.makedirs(args.storage)
@@ -68,7 +69,7 @@ if __name__ == "__main__":
 
     if (not need_map):
         for caller in snp_callers:
-            out_dir_snp = testlib.make_snp_calling(caller, args.ref, args.input, args.bed, tmp_dir)
+            out_dir_snp = testlib.make_snp_calling(caller, args.ref, args.input if args.input else args.bam_list, args.bed, tmp_dir)
             testlib.flushres(out_dir_snp, args.storage)
         sys.exit(0)
     else:
