@@ -142,17 +142,17 @@ def filter_vcf(vcf, ref):
     basename = os.path.splitext(vcf)[0]
     dirname = os.path.dirname(vcf) if os.path.dirname(vcf) else '.'
     log = open(dirname + "/snp.log", "a")
-    if not os.path.exists(ref + '.rep.bed'):
-        create_repeats_reg(ref)
+#    if not os.path.exists(ref + '.rep.bed'):
+#        create_repeats_reg(ref)
 
     subprocess.call("vcftools --minQ 30 --hwe 0.05 "
-            + " --non-ref-ac 2 --minDP 5 --recode --recode-INFO-all --out " + basename + " --vcf " + vcf
-            + " --exclude-bed " + ref + '.rep.bed', 
+            + " --non-ref-ac 2 --minDP 5 --recode --recode-INFO-all --out " + basename + " --vcf " + vcf,
+#            + " --exclude-bed " + ref + '.rep.bed', 
             stdout=log, stderr=log, shell=True)
     if not os.path.exists(basename + '.recode.vcf'):
         subprocess.call("vcftools --hwe 0.05 "
-                + " --non-ref-ac 2 --minDP 5 --recode --recode-INFO-all --out " + basename + " --vcf " + vcf 
-                + " --exclude-bed " + ref + '.rep.bed', 
+                + " --non-ref-ac 2 --minDP 5 --recode --recode-INFO-all --out " + basename + " --vcf " + vcf,
+#                + " --exclude-bed " + ref + '.rep.bed', 
                 stdout=log, stderr=log, shell=True)
     os.rename(basename + '.vcf', basename + '.raw.vcf')
     if os.path.exists(basename + '.recode.vcf'):

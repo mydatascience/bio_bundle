@@ -21,8 +21,8 @@ echo -e "0\tBuilding index\t"`date +%s` >> $out/mapping_time.log
 echo "mapping started" && \
 date && \
 echo -e "1\tMaking alignment\t"`date +%s` >> $out/mapping_time.log && \
-soap -a $reads1 -b $reads2 -D $ref.index -m 0 -x 500 -o $out/$reads1_base.soap -p $threads -g 1 && \
+soap -a $reads1 -2 $reads2 -D $ref.index -m 0 -x 500 -o $out/$reads1_base.soap -p $threads -g 1 && \
 echo "mapping done" && \
 date && \
 echo -e "2\tAlignment done\t"`date +%s` >> $out/mapping_time.log
-$dir/../../../misc/soap2sam.pl $out/$reads_base.soap > $out/$reads_base.sam
+$dir/../../../misc/soap2sam.pl $out/$reads1_base.soap > $out/$reads1_base.sam

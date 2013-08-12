@@ -36,6 +36,7 @@ def begin_document(tex_f):
 \usepackage{float}
 \usepackage{pdflscape}
 \usepackage{geometry}
+\usepackage{longtable}
 \geometry{verbose,a4paper,tmargin=2cm,bmargin=2cm,lmargin=2.5cm,rmargin=1.5cm}
 \begin{document}
 \hyphenpenalty=9999
@@ -234,7 +235,9 @@ def vc_single_plots(var_callers, in_dir, var_caller_names):
         tmp_data['indel'][vc] = [0] * len(var_callers.keys())
         tmp_data['time'][vc] = [0] * len(var_callers.keys())
     i = 0
-    ind = np.arange(0, len(var_callers.keys()) * width * len(var_caller_names), len(var_caller_names) * width)
+    ind = np.arange(0, len(var_callers.keys()) * width * len(var_caller_names) - 0.0001, len(var_caller_names) * width)
+    print len(var_caller_names)
+    print len(var_callers.keys())
     print ind
 
     for aligner in sorted(var_callers.keys()):
@@ -250,6 +253,8 @@ def vc_single_plots(var_callers, in_dir, var_caller_names):
 
     i = 0
     for var_caller in var_caller_names:
+        print var_caller
+        print tmp_data['snp'][var_caller]
         rects.append(snp_plot.bar(ind + i * width, tmp_data['snp'][var_caller], width - 0.02, color = colors[i]))
         rects.append(indel_plot.bar(ind + i * width, tmp_data['indel'][var_caller], width - 0.02, color = colors[i]))
         rects.append(time_plot.bar(ind + i * width, tmp_data['time'][var_caller], width - 0.02, color = colors[i]))
@@ -327,7 +332,10 @@ def vc_shared_plots(var_callers, in_dir, var_caller_names):
         tmp_data['snp'][vc] = [[0] * len(var_callers.keys()), [0] * len(var_callers.keys())]
         tmp_data['indel'][vc] = [[0] * len(var_callers.keys()), [0] * len(var_callers.keys())]
     i = 0
-    ind = np.arange(0, len(var_callers.keys()) * width * len(var_caller_names), len(var_caller_names) * width)
+    ind = np.arange(0, len(var_callers.keys()) * width * len(var_caller_names) - 0.0001, len(var_caller_names) * width)
+    print ind
+    print len(var_callers.keys()) * width * len(var_caller_names)
+    print len(var_caller_names)
 
     for aligner in sorted(var_callers.keys()):
         if (not len(var_callers[aligner])):
